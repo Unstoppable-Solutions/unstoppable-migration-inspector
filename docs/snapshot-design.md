@@ -259,8 +259,7 @@ Verdicts:
 
 | Site key | ID overlap | Verdict | Needs acknowledgment |
 |---|---|---|---|
-| matches | ≥ 90% or nothing to sample | **same site** | no |
-| matches | 50–89% | **likely same** | no |
+| matches | ≥ 50% or nothing to sample | **same site** (below 90% the overlap is listed under "Differences noted") | no |
 | matches | < 50% | **unverified** | yes |
 | differs/absent | ≥ 90% plus name, domain or prefix match | **likely same** | no |
 | differs/absent | ≥ 50%, or nothing to sample plus another signal | **unverified** | yes |

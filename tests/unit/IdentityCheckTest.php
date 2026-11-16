@@ -66,12 +66,13 @@ final class IdentityCheckTest extends Test_Case {
 	}
 
 	/**
-	 * Matching key, partial overlap: likely the same, with the overlap explained.
+	 * Matching key, partial overlap (a partial import): same site, with the
+	 * overlap still explained.
 	 */
-	public function test_matching_site_key_with_partial_overlap_is_likely_same() {
+	public function test_matching_site_key_with_partial_overlap_is_same_site_with_reason() {
 		$result = Identity_Check::decide( $this->signals( array( 'key_match' => true, 'id_overlap' => 0.7 ) ) );
 
-		$this->assertSame( Identity_Check::LIKELY_SAME, $result['verdict'] );
+		$this->assertSame( Identity_Check::SAME_SITE, $result['verdict'] );
 		$this->assertFalse( $result['needs_ack'] );
 		$this->assertStringContainsString( '70%', implode( ' ', $result['reasons'] ) );
 	}

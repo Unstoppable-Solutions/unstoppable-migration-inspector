@@ -89,9 +89,9 @@ final class Identity_Check {
 			if ( null !== $overlap && $overlap < 0.5 ) {
 				$verdict   = self::UNVERIFIED;
 				$reasons[] = __( 'The site key matches, so this database was copied from the snapshot\'s site at some point, but most sampled records are not here. The sites may have drifted apart (for example an old staging copy, or a site built from a cloned template).', 'unstoppable-migration-inspector' );
-			} elseif ( null !== $overlap && $overlap < 0.9 ) {
-				$verdict = self::LIKELY_SAME;
 			} else {
+				// Up to half the sample missing is exactly what a comparison is
+				// for (a partial import); the overlap is still listed below.
 				$verdict = self::SAME_SITE;
 			}
 		} else {
