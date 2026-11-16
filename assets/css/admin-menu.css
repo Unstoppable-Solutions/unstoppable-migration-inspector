@@ -1,0 +1,24 @@
+/**
+ * Unstoppable Solutions brand colour for the admin menu item.
+ * Loaded on every admin screen because the menu appears everywhere.
+ */
+
+#adminmenu .toplevel_page_unstoppable-migration-inspector .wp-menu-name {
+	color: #f0b849;
+}
+
+#adminmenu .toplevel_page_unstoppable-migration-inspector:hover .wp-menu-name,
+#adminmenu .toplevel_page_unstoppable-migration-inspector.current .wp-menu-name,
+#adminmenu .toplevel_page_unstoppable-migration-inspector.wp-has-current-submenu .wp-menu-name {
+	color: #fff;
+}
+
+#adminmenu .toplevel_page_unstoppable-migration-inspector .wp-menu-image:before {
+	color: #f0b849;
+}
+
+#adminmenu .toplevel_page_unstoppable-migration-inspector:hover .wp-menu-image:before,
+#adminmenu .toplevel_page_unstoppable-migration-inspector.current .wp-menu-image:before,
+#adminmenu .toplevel_page_unstoppable-migration-inspector.wp-has-current-submenu .wp-menu-image:before {
+	color: #fff;
+}
