@@ -1,111 +1,52 @@
-# Unstoppable Plugin Template
+# Unstoppable Migration Inspector
 
-A ready-to-fork scaffold for new **Unstoppable Solutions** WordPress plugins. Click the green **Use this template** button above to spin up a new plugin repo with the same CI, auto-deploy workflow, and Unstoppable Solutions conventions already in place.
+A free WordPress plugin that checks a site after it has been moved to a new host, server or domain, explains what did not transfer correctly, and offers safe, verifiable repairs only where they can be done safely.
 
-## What's in the box
+> **Status:** Phase 1 (foundation) in development. Not ready for production. See [`docs/development-plan.md`](docs/development-plan.md) for the plan, scope and milestones.
 
-- Main plugin file with a WordPress.org-compliant header
-- `includes/class-plugin.php` — stub main class, activation / deactivation / admin-menu hooks already wired
-- `readme.txt` skeleton in the WordPress.org format (Description, Installation, FAQ, Screenshots, Privacy, Changelog, Upgrade Notice sections)
-- `uninstall.php` stub
-- `.github/workflows/plugin-check.yml` — runs the official WordPress Plugin Check on every push and PR
-- `.github/workflows/deploy-to-wporg.yml` — on a published GitHub Release, auto-deploys to WordPress.org SVN (dormant until the plugin is accepted into the directory)
-- `.distignore` so dev-only files (workflows, README.md, SECURITY.md) don't end up in the WordPress.org zip
-- `.gitignore` with sensible defaults for a PHP / WordPress project
-- `CLAUDE.md` — context for future Claude Code sessions working on the repo (release workflow, prefix / main-file naming, phpcs:ignore conventions)
-- Silence `index.php` in every directory
+## Principles
 
-## How to use
+- **Inspection first.** The dashboard leads with *Scan Website*. Repair tools, including database search and replace, are offered from the findings that need them.
+- **Useful without ever repairing.** The scanner, migration snapshots and reports stand on their own.
+- **Extremely conservative writes.** Anything that cannot be transformed and verified safely is skipped and reported.
+- **Standalone and free.** No account, no paid tier, no outbound requests, and no dependency on other Unstoppable Solutions plugins.
 
-### 1. Create your new repo
+## Requirements
 
-Click **Use this template** → **Create a new repository**.
+- WordPress 6.5 or later (tested up to 7.1)
+- PHP 7.4 or later
 
-- **Repository name:** `unstoppable-your-plugin-slug` (lowercase-hyphens, must match the WordPress.org slug you plan to submit)
-- **Visibility:** Public
-- Create
-
-### 2. Clone it locally
+## Development
 
 ```bash
-git clone https://github.com/paramedic192/unstoppable-your-plugin-slug.git
-cd unstoppable-your-plugin-slug
+composer install
+composer lint      # php -l on every file
+composer phpcs     # WordPress Coding Standards + PHP 7.4 compatibility
+composer test      # PHPUnit unit tests (no WordPress needed)
 ```
 
-### 3. Replace the template placeholders
+`tests/smoke/` holds the live-install checks that run against a real WordPress install (see the script header for setup).
 
-Six tokens appear throughout the files. Replace them everywhere with your real plugin's values:
+### Layout
 
-| Placeholder | Example value | Where it appears |
-|---|---|---|
-| `__PLUGIN_NAME__` | `Unstoppable My Plugin` | Human-readable name shown to users |
-| `__PLUGIN_SLUG__` | `unstoppable-my-plugin` | Slug, text domain, filenames |
-| `__PLUGIN_PACKAGE__` | `Unstoppable_My_Plugin` | @package annotation, class namespace |
-| `__PLUGIN_SHORT_DESCRIPTION__` | `Does one thing well on your WordPress site.` | Plugin header + readme.txt subtitle |
-| `__PREFIX__` | `UMPL` | 4-letter uppercase prefix for constants / classes |
-| `__prefix__` | `umpl` | Lowercase prefix for option names, table suffixes |
-| `__TAG1__` ... `__TAG5__` | `polls, voting, elections, ballot, surveys` | WordPress.org tags (max 5) |
+| Path | Purpose |
+|---|---|
+| `unstoppable-migration-inspector.php` | Bootstrap: constants, autoloader, hooks |
+| `includes/core/` | Plugin, activation, schema, capabilities, settings, health summary |
+| `includes/admin/` | Admin menu, screens, assets |
+| `includes/rest/` | REST API controllers (`unstoppable-migration-inspector/v1`) |
+| `assets/` | Admin CSS (and JS as features land) |
+| `tests/unit/` | PHPUnit + Brain Monkey |
+| `tests/smoke/` | Live WordPress checks run with WP-CLI |
+| `docs/` | Plan and design notes (not shipped) |
 
-A quick way to do all six at once on macOS / Linux (edit the values first):
+### Conventions
 
-```bash
-PLUGIN_NAME="Unstoppable My Plugin"
-PLUGIN_SLUG="unstoppable-my-plugin"
-PLUGIN_PACKAGE="Unstoppable_My_Plugin"
-PLUGIN_DESC="Does one thing well on your WordPress site."
-PREFIX_UPPER="UMPL"
-PREFIX_LOWER="umpl"
+- Namespace `UnstoppableSolutions\MigrationInspector`; prefix `UMIN_` / `umin_`.
+- Text domain `unstoppable-migration-inspector`.
+- Feature branches and pull requests; CI must pass before merging.
+- Dev files (`docs/`, `tests/`, tooling) are excluded from the release ZIP by `.distignore`.
 
-# Replace tokens in all tracked text files:
-git ls-files | xargs -I{} sed -i.bak \
-  -e "s|__PLUGIN_NAME__|${PLUGIN_NAME}|g" \
-  -e "s|__PLUGIN_SLUG__|${PLUGIN_SLUG}|g" \
-  -e "s|__PLUGIN_PACKAGE__|${PLUGIN_PACKAGE}|g" \
-  -e "s|__PLUGIN_SHORT_DESCRIPTION__|${PLUGIN_DESC}|g" \
-  -e "s|__PREFIX__|${PREFIX_UPPER}|g" \
-  -e "s|__prefix__|${PREFIX_LOWER}|g" \
-  {}
+## Licence
 
-# Clean up the backup files sed makes:
-find . -name "*.bak" -delete
-
-# Rename the main plugin file to match the slug:
-git mv __PLUGIN_SLUG__.php "${PLUGIN_SLUG}.php"
-```
-
-Then edit `readme.txt` to replace the `__TAG1__` through `__TAG5__` placeholders with your real WordPress.org tags.
-
-### 4. Commit and push
-
-```bash
-git add -A
-git commit -m "Scaffold new plugin from unstoppable-plugin-template"
-git push origin main
-```
-
-The **Plugin Check** workflow will run against the clean scaffold. Fix anything it flags before writing your own code.
-
-### 5. When ready for WordPress.org
-
-- Submit the plugin at https://wordpress.org/plugins/developers/add/
-- Once accepted, add two secrets at **Settings → Secrets and variables → Actions**:
-  - `SVN_USERNAME` — your WordPress.org username
-  - `SVN_PASSWORD` — your WordPress.org SVN password (generate at https://profiles.wordpress.org/<you>/profile/edit/group/3/?screen=svn-password)
-- Create a GitHub Release tagged `v0.1.0` (or whatever your first release version is). The deploy workflow fires and pushes `trunk/` and `tags/` to WordPress.org SVN automatically.
-
-## Conventions
-
-Every plugin created from this template inherits:
-
-- GPL-2.0-or-later license (the exact string the WordPress.org directory requires)
-- Author: Unstoppable Solutions, Author URI: https://unstoppablesolutions.app
-- Contributor: `paramedic192`
-- Four-plus character class / constant prefixes (never `WC_` or any WordPress-reserved prefix)
-- ABSPATH guard at the top of every PHP file
-- Nonces + capability checks on every state change
-- `$wpdb->prepare()` on every database query
-- No outbound HTTP calls unless the plugin is explicitly a service integration (per WordPress.org Guideline 7)
-
-## License
-
-GPL-2.0-or-later. See the main plugin file header.
+GPL-2.0-or-later. See [`license.txt`](license.txt).

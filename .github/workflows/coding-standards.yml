@@ -1,0 +1,56 @@
+name: Coding standards and unit tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: PHP lint (${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['7.4', '8.1', '8.3', '8.4']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Lint every PHP file
+        run: find . -path ./vendor -prune -o -name '*.php' -print0 | xargs -0 -n1 php -l
+
+  phpcs:
+    name: PHPCS
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: composer
+      - run: composer install --no-interaction --no-progress
+      - run: vendor/bin/phpcs
+
+  phpunit:
+    name: PHPUnit (${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          tools: composer
+      - run: composer install --no-interaction --no-progress
+      - run: vendor/bin/phpunit
