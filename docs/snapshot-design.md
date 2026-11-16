@@ -272,10 +272,12 @@ the key but diverges. So the ID sample can override a matching key, and
 address, prefix and name differences are always listed under "Differences
 noted", even for a same-site verdict. An integration test empties a copied
 site that kept the key and checks the comparison is refused without
-acknowledgment. The last two need an explicit
-acknowledgment: the REST call returns 409 `umin_identity_unconfirmed` with
-the reasons, the UI asks the administrator to confirm, and the acknowledgment
-and verdict are stored in the comparison result and shown above it.
+acknowledgment.
+
+When acknowledgment is needed, the REST call returns 409
+`umin_identity_unconfirmed` with the reasons, the UI asks the administrator
+to confirm, and the acknowledgment and verdict are stored in the comparison
+result and shown above it.
 
 ---
 
