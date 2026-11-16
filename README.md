@@ -25,7 +25,14 @@ composer phpcs     # WordPress Coding Standards + PHP 7.4 compatibility
 composer test      # PHPUnit unit tests (no WordPress needed)
 ```
 
-`tests/smoke/` holds the live-install checks that run against a real WordPress install (see the script header for setup).
+Live tests against real WordPress installs (see each script's header for downloads and options):
+
+```bash
+DL_DIR=/path/to/downloads tests/smoke/run.sh                        # built ZIP, screens, settings, permissions, Plugin Check
+DL_DIR=/path/to/downloads MULTISITE=1 DB=mysql tests/smoke/run.sh
+DL_DIR=/path/to/downloads tests/integration/run.sh                  # snapshots: HPOS, legacy, storage switch, two-site migration
+DL_DIR=/path/to/downloads DB=mysql tests/integration/run.sh large   # 200k posts + 20k orders at memory_limit=128M
+```
 
 ### Layout
 
@@ -35,9 +42,12 @@ composer test      # PHPUnit unit tests (no WordPress needed)
 | `includes/core/` | Plugin, activation, schema, capabilities, settings, health summary |
 | `includes/admin/` | Admin menu, screens, assets |
 | `includes/rest/` | REST API controllers (`unstoppable-migration-inspector/v1`) |
+| `includes/jobs/` | Persistent, lease-guarded jobs (state in the database, execution per request) |
+| `includes/snapshots/` | Snapshot capture, comparison, chunk codec, export/import |
 | `assets/` | Admin CSS (and JS as features land) |
 | `tests/unit/` | PHPUnit + Brain Monkey |
 | `tests/smoke/` | Live WordPress checks run with WP-CLI |
+| `tests/integration/` | Snapshot scenarios with WooCommerce on real installs |
 | `docs/` | Plan and design notes (not shipped) |
 
 ### Conventions

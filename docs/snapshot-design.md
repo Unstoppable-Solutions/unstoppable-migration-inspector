@@ -1,6 +1,6 @@
 # Migration Snapshots: Design (Phase 2a)
 
-**Status:** Implementation in progress on `feature/phase-2a-snapshots`
+**Status:** Implemented on `feature/phase-2a-snapshots`. The §6 tests pass on SQLite and MariaDB 10.11.
 **Read-only guarantee:** Capturing and comparing never write to any table
 except the plugin's own. Nothing here modifies site content.
 

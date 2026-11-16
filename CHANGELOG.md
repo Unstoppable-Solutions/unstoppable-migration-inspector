@@ -17,3 +17,11 @@ described at https://keepachangelog.com.
   multisite and a `UMIN_DISABLE_WRITES` kill switch.
 - REST status route.
 - Uninstall that keeps all data unless an administrator opted in to removal.
+- Migration snapshots (Phase 2a): resumable capture of record IDs and
+  allowlisted fields for posts of every type, users, comments, terms and
+  WooCommerce orders/refunds (HPOS and legacy storage), plus table row
+  counts and a configuration fingerprint. Comparison lists exact IDs as
+  missing, changed, created after the snapshot or not in the snapshot.
+  Streamed JSON export and strictly validated import. CSV of missing IDs.
+- Persistent jobs with leases: work resumes after a closed browser or a
+  server timeout; no background execution.

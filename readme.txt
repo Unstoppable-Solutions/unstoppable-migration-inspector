@@ -84,12 +84,13 @@ This plugin does not connect to any external service and sends no data off your 
 
 == Privacy ==
 
-The plugin stores its settings in one WordPress option (`umin_settings`) and creates three database tables for its own snapshots, scan history and findings. It does not collect personal data about visitors or customers. Plugin data is kept when the plugin is deleted, unless you switch on complete removal in the settings.
+The plugin stores its settings in one WordPress option (`umin_settings`) and creates its own database tables for snapshots, comparisons, job progress, scan history and findings. Snapshots contain record IDs, status names, dates, content sizes, user roles and site settings, never names, email addresses, content or order details. It does not collect personal data about visitors or customers. Plugin data is kept when the plugin is deleted, unless you switch on complete removal in the settings.
 
 == Changelog ==
 
 = 0.1.0 =
 * Development build: plugin foundation, Migration Health dashboard, tabbed settings that save each tab independently, database tables, REST status route and uninstall routine.
+* Migration snapshots: capture, compare (missing, changed, created after snapshot, not in snapshot), secure export and import, WooCommerce HPOS and legacy order storage.
 
 == Upgrade Notice ==
 

@@ -39,7 +39,7 @@ Every push and PR runs the official WordPress Plugin Check against the codebase 
 
 **Secrets used by deploy:** `SVN_USERNAME`, `SVN_PASSWORD` — org-level secrets on `unstoppable-solutions`. Nothing per-repo.
 
-`coding-standards.yml` also runs PHP lint, PHPCS (WordPress + PHPCompatibilityWP 7.4+) and the PHPUnit unit tests on every push and PR. Locally: `composer lint`, `composer phpcs`, `composer test`, and `tests/smoke/run.sh` for the live WordPress check.
+`coding-standards.yml` also runs PHP lint, PHPCS (WordPress + PHPCompatibilityWP 7.4+) and the PHPUnit unit tests on every push and PR. Locally: `composer lint`, `composer phpcs`, `composer test`, `tests/smoke/run.sh` for the live WordPress check and `tests/integration/run.sh` for the snapshot scenarios (WooCommerce, HPOS/legacy, migration, `large` on MySQL). Do not start Phase 3 (database modifications) until the scanner and snapshots are thoroughly tested.
 
 ## Known phpcs:ignores specific to this plugin
 
