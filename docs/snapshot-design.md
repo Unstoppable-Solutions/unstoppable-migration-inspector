@@ -1,6 +1,6 @@
 # Migration Snapshots: Design (Phase 2a)
 
-**Status:** Implemented on `feature/phase-2a-snapshots`. The §6 tests pass on SQLite and MariaDB 10.11.
+**Status:** Implemented on `feature/phase-2a-snapshots`. The §6 tests pass on SQLite, MariaDB 10.11 and MySQL 8.4, with PHP 8.3 and 7.4 (§6.1).
 **Read-only guarantee:** Capturing and comparing never write to any table
 except the plugin's own. Nothing here modifies site content.
 
@@ -171,8 +171,8 @@ exactly one bucket:
 
 | Bucket | Rule |
 |---|---|
-| **Missing** | In the snapshot, not on this site. This is the headline finding. |
-| **Changed** | On both, with a different status, modified time, content length, role, approval or object count. Each changed field is listed with before and after values. |
+| **Not found** (internally `missing`) | In the snapshot, not on this site. This is the headline finding; see "Not found is not the same as lost" below. |
+| **Changed** | On both, with a different status, modified time, content length, content digest, role, approval or object count. Each changed field is listed with before and after values. |
 | **Unchanged** | On both, with identical fields. Counted only. |
 | **New since snapshot** | Not in the snapshot, with a creation time on this site after the snapshot was taken. |
 | **Not in snapshot** | Not in the snapshot, but created *before* the snapshot (or with no creation time). Reported separately, because it usually means data was merged from another source, or the snapshot was taken on a different site. |
@@ -320,6 +320,10 @@ MySQL 8.4, with PHP 8.3 and PHP 7.4 (see §6.1).
 
 PHP 7.4 on SQLite cannot run: the SQLite Database Integration plugin (3.1.3)
 requires SQLite 3.37, and the official PHP 7.4 image ships SQLite 3.34.1. This
-is a limit of the test environment, not of this plugin. GitHub Actions also
-runs lint (7.4, 8.1, 8.3, 8.4), PHPCS and PHPUnit (7.4, 8.3).
+is a limit of the test environment, not of this plugin.
+
+All rows above were run on the final Phase 2a code (commit `27eb2ea` and
+later). GitHub Actions is configured to run lint (7.4, 8.1, 8.3, 8.4), PHPCS,
+PHPUnit (7.4, 8.3) and Plugin Check; its results are not listed here because
+they could not be read from the development session.
 
