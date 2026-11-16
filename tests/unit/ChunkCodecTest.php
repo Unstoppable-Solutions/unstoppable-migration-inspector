@@ -87,9 +87,8 @@ final class ChunkCodecTest extends Test_Case {
 	}
 
 	public function test_one_million_ids_round_trip_in_chunks() {
-		$all     = array();
-		$id      = 0;
-		$decoded = array();
+		$all = array();
+		$id  = 0;
 		// Mostly sequential with periodic gaps, like a real posts table.
 		for ( $i = 0; $i < 1000000; $i++ ) {
 			$id   += ( 0 === $i % 97 ) ? 13 : 1;
@@ -101,12 +100,10 @@ final class ChunkCodecTest extends Test_Case {
 			$chunk  = Chunk_Codec::encode( $ids, array(), array() );
 			$bytes += strlen( $chunk['payload'] );
 			$out    = Chunk_Codec::decode( $chunk['payload'], $chunk['count'], $chunk['sha256'], array() );
-			$this->assertSame( $ids[0], $out['ids'][0] );
-			$this->assertSame( end( $ids ), end( $out['ids'] ) );
-			$decoded[] = $out['ids'];
+			// Compare chunk by chunk so the test stays inside a 128 MB memory_limit.
+			$this->assertSame( $ids, $out['ids'] );
 		}
 
-		$this->assertSame( $all, array_merge( ...$decoded ) );
 		$this->assertLessThan( 1000000, $bytes, 'A million IDs should encode to well under a megabyte.' );
 	}
 

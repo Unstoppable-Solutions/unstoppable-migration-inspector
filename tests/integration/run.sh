@@ -18,7 +18,12 @@
 #              (needs DB=mysql; slow)
 #
 # DL_DIR needs wordpress.tar.gz, wp-cli.phar, sqlite.zip, woocommerce.zip.
-# DB=mysql uses MySQL/MariaDB (DB_NAME is DROPPED and recreated).
+# DB=mysql uses MySQL/MariaDB (test databases umin_int_* are DROPPED and
+# recreated). DB_HOST, DB_USER, DB_PASSWORD set the WordPress connection;
+# DB_ADMIN is the command that runs admin SQL (default: mariadb) and DB_DUMP
+# the dump command (default: mariadb-dump), e.g. for a MySQL container:
+#   DB_HOST=127.0.0.1:3307 DB_ADMIN="docker exec -i umin-mysql mysql -uroot -proot"
+#   DB_DUMP="docker exec umin-mysql mysqldump -uroot -proot"
 #
 # Every check prints PASS or FAIL; exit status is non-zero on any failure.
 
@@ -49,7 +54,7 @@ new_site() {
 
 	if [ "${DB:-sqlite}" = "mysql" ]; then
 		wp_at "${dir}" config create --dbname="${dbname}" --dbuser="${DB_USER:-umin}" --dbpass="${DB_PASSWORD:-umin}" --dbhost="${DB_HOST:-localhost}" --skip-check >/dev/null
-		mariadb -e "DROP DATABASE IF EXISTS ${dbname}; CREATE DATABASE ${dbname} CHARACTER SET utf8mb4; GRANT ALL ON ${dbname}.* TO '${DB_USER:-umin}'@'localhost';" 2>/dev/null
+		${DB_ADMIN:-mariadb} -e "DROP DATABASE IF EXISTS ${dbname}; CREATE DATABASE ${dbname} CHARACTER SET utf8mb4;" 2>/dev/null
 	else
 		unzip -q "${DL_DIR}/sqlite.zip" -d "${dir}/wp-content/plugins/"
 		sed -e "s#{SQLITE_IMPLEMENTATION_FOLDER_PATH}#${dir}/wp-content/plugins/sqlite-database-integration#" \
@@ -130,8 +135,8 @@ scenario_migrate() {
 	rm -rf "${BASE}/site-b"
 	cp -a "${BASE}/site-a" "${BASE}/site-b"
 	if [ "${DB:-sqlite}" = "mysql" ]; then
-		mariadb -e "DROP DATABASE IF EXISTS umin_int_b; CREATE DATABASE umin_int_b CHARACTER SET utf8mb4; GRANT ALL ON umin_int_b.* TO '${DB_USER:-umin}'@'localhost';"
-		mariadb-dump umin_int_a | mariadb umin_int_b
+		${DB_ADMIN:-mariadb} -e "DROP DATABASE IF EXISTS umin_int_b; CREATE DATABASE umin_int_b CHARACTER SET utf8mb4;" 2>/dev/null
+		${DB_DUMP:-mariadb-dump} umin_int_a 2>/dev/null | ${DB_ADMIN:-mariadb} umin_int_b 2>/dev/null
 		wp_at "${BASE}/site-b" config set DB_NAME umin_int_b >/dev/null
 	else
 		sed -i "s#${BASE}/site-a/#${BASE}/site-b/#g" "${BASE}/site-b/wp-content/db.php"
