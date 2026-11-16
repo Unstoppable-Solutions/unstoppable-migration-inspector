@@ -58,7 +58,7 @@ final class Health_Summary {
 			),
 			'woocommerce'   => array(
 				'label'       => __( 'WooCommerce', 'unstoppable-migration-inspector' ),
-				'description' => __( 'Checks store page assignments, order storage (HPOS) and its tables, and product image references.', 'unstoppable-migration-inspector' ),
+				'description' => __( 'Checks store page assignments, order storage (HPOS) and its tables, product lookup and analytics data, and store visibility.', 'unstoppable-migration-inspector' ),
 				'action'      => __( 'Run a scan to check the store.', 'unstoppable-migration-inspector' ),
 			),
 		);
@@ -81,25 +81,33 @@ final class Health_Summary {
 	/**
 	 * Current status of every category.
 	 *
-	 * Phase 1 has no scan results yet, so applicable categories report
-	 * "not tested". Later phases read the latest completed scan here.
+	 * Without scan results, applicable categories report "not tested".
 	 *
+	 * @param array<string, array<string, mixed>> $scan_categories Category results of the latest completed scan.
 	 * @return array<int, array<string, mixed>>
 	 */
-	public static function category_statuses() {
+	public static function category_statuses( array $scan_categories = array() ) {
 		$rows = array();
 
 		foreach ( self::categories() as $key => $category ) {
 			$applicable = self::is_applicable( $key );
 
+			$scanned = isset( $scan_categories[ $key ] ) && is_array( $scan_categories[ $key ] ) ? $scan_categories[ $key ] : null;
+			$status  = $applicable ? self::STATUS_NOT_TESTED : self::STATUS_NOT_APPLICABLE;
+
+			if ( null !== $scanned && isset( $scanned['status'] ) && in_array( $scanned['status'], array( self::STATUS_PASSED, self::STATUS_WARNING, self::STATUS_CRITICAL, self::STATUS_NOT_TESTED, self::STATUS_NOT_APPLICABLE ), true ) ) {
+				$status = $scanned['status'];
+			}
+
 			$rows[] = array(
 				'id'          => $key,
 				'label'       => $category['label'],
-				'status'      => $applicable ? self::STATUS_NOT_TESTED : self::STATUS_NOT_APPLICABLE,
-				'issues'      => null,
+				'status'      => $status,
+				'issues'      => null === $scanned ? null : (int) ( isset( $scanned['issues'] ) ? $scanned['issues'] : 0 ),
+				'notices'     => null === $scanned ? null : (int) ( isset( $scanned['notices'] ) ? $scanned['notices'] : 0 ),
 				'description' => $category['description'],
 				'action'      => $applicable
-					? $category['action']
+					? ( null === $scanned ? $category['action'] : self::scanned_action( $status ) )
 					: __( 'Nothing to check. This category does not apply to this site.', 'unstoppable-migration-inspector' ),
 			);
 		}
@@ -184,12 +192,32 @@ final class Health_Summary {
 	 * @return array<string, mixed>
 	 */
 	public static function summary() {
-		$rows = self::category_statuses();
+		$scans = new \UnstoppableSolutions\MigrationInspector\Scanner\Scan_Repository();
+		$scan  = $scans->latest_complete();
+		$rows  = self::category_statuses( null === $scan || empty( $scan['summary']['categories'] ) ? array() : (array) $scan['summary']['categories'] );
 
 		return array(
 			'overall'    => self::overall_status( $rows ),
 			'categories' => $rows,
-			'last_scan'  => null,
+			'last_scan'  => $scan,
 		);
+	}
+
+	/**
+	 * Recommended action for a category after a scan.
+	 *
+	 * @param string $status Category status.
+	 * @return string
+	 */
+	public static function scanned_action( $status ) {
+		switch ( $status ) {
+			case self::STATUS_CRITICAL:
+			case self::STATUS_WARNING:
+				return __( 'Open the scan results to see what was found and what to do next.', 'unstoppable-migration-inspector' );
+			case self::STATUS_PASSED:
+				return __( 'Nothing needs attention in this area. Run the scan again after any further changes.', 'unstoppable-migration-inspector' );
+			default:
+				return __( 'Some checks in this area could not run. See the scan results for details.', 'unstoppable-migration-inspector' );
+		}
 	}
 }

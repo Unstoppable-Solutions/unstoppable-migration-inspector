@@ -38,7 +38,7 @@ final class Dashboard_Page {
 				<?php esc_html_e( 'Moved this site to a new host, server or domain? Run a scan to check what transferred correctly and what needs attention. Scanning is read-only and does not change your site.', 'unstoppable-migration-inspector' ); ?>
 			</p>
 
-			<?php self::render_scan_panel(); ?>
+			<?php self::render_scan_panel( $summary['last_scan'] ); ?>
 			<?php self::render_overall( $summary['overall'] ); ?>
 
 			<h2 class="umin-section-title"><?php esc_html_e( 'Inspection categories', 'unstoppable-migration-inspector' ); ?></h2>
@@ -58,30 +58,40 @@ final class Dashboard_Page {
 	/**
 	 * The primary Scan Website panel.
 	 *
-	 * The scanner ships in the next build. Until then the button is shown,
-	 * disabled, with a plain note, so nothing pretends to work.
-	 *
+	 * @param array<string, mixed>|null $last_scan Latest completed scan.
 	 * @return void
 	 */
-	private static function render_scan_panel() {
+	private static function render_scan_panel( $last_scan ) {
 		?>
 		<div class="umin-panel umin-scan-panel">
 			<div class="umin-scan-panel__text">
 				<h2><?php esc_html_e( 'Scan this website', 'unstoppable-migration-inspector' ); ?></h2>
-				<p><?php esc_html_e( 'Checks domains and URLs, the database, media files, HTTPS, WordPress configuration and, if installed, WooCommerce.', 'unstoppable-migration-inspector' ); ?></p>
+				<p><?php esc_html_e( 'Checks domains and URLs, the database, media files, HTTPS, WordPress configuration and, if installed, WooCommerce. Large sites are scanned in small steps; keep this page open until it finishes.', 'unstoppable-migration-inspector' ); ?></p>
+				<?php if ( is_array( $last_scan ) ) : ?>
+					<p>
+						<?php
+						printf(
+							/* translators: %s: date and time. */
+							esc_html__( 'Last scan: %s.', 'unstoppable-migration-inspector' ),
+							esc_html( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) strtotime( (string) $last_scan['finished_at'] . ' UTC' ) ) )
+						);
+						?>
+						<a href="<?php echo esc_url( add_query_arg( 'scan', (int) $last_scan['id'], Admin_Menu::url( Admin_Menu::SCAN_SLUG ) ) ); ?>"><?php esc_html_e( 'View results', 'unstoppable-migration-inspector' ); ?></a>
+					</p>
+				<?php endif; ?>
 			</div>
 			<div class="umin-scan-panel__action">
-				<button type="button" class="button button-primary button-hero" disabled="disabled" aria-describedby="umin-scan-note">
+				<button type="button" class="button button-primary button-hero" data-umin-action="scan">
 					<?php esc_html_e( 'Scan Website', 'unstoppable-migration-inspector' ); ?>
 				</button>
-				<p id="umin-scan-note" class="description"><?php esc_html_e( 'The scanner is not available in this development build yet.', 'unstoppable-migration-inspector' ); ?></p>
 			</div>
+			<?php Scan_Page::render_progress(); ?>
 		</div>
 		<?php
 	}
 
 	/**
-	 * The overall Migration Health line.
+	 * Overall health line.
 	 *
 	 * @param string $overall Overall status.
 	 * @return void
@@ -120,6 +130,14 @@ final class Dashboard_Page {
 				_n( '%d issue', '%d issues', (int) $category['issues'], 'unstoppable-migration-inspector' ),
 				(int) $category['issues']
 			);
+
+		if ( ! empty( $category['notices'] ) ) {
+			$issues .= ', ' . sprintf(
+				/* translators: %d: number of notices. */
+				_n( '%d notice', '%d notices', (int) $category['notices'], 'unstoppable-migration-inspector' ),
+				(int) $category['notices']
+			);
+		}
 		?>
 		<li class="umin-card umin-status--<?php echo esc_attr( $category['status'] ); ?>">
 			<div class="umin-card__header">
@@ -132,6 +150,9 @@ final class Dashboard_Page {
 				<strong><?php esc_html_e( 'Recommended:', 'unstoppable-migration-inspector' ); ?></strong>
 				<?php echo esc_html( $category['action'] ); ?>
 			</p>
+			<?php if ( null !== $category['issues'] && Health_Summary::STATUS_NOT_APPLICABLE !== $category['status'] ) : ?>
+				<p><a href="<?php echo esc_url( Admin_Menu::url( Admin_Menu::SCAN_SLUG ) . '#umin-cat-' . $category['id'] ); ?>"><?php esc_html_e( 'See details', 'unstoppable-migration-inspector' ); ?></a></p>
+			<?php endif; ?>
 		</li>
 		<?php
 	}

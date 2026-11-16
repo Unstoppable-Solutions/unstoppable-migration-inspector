@@ -52,6 +52,27 @@ final class Assets {
 			UMIN_VERSION
 		);
 
+		if ( Admin_Menu::is_scan_screen( $hook_suffix ) ) {
+			wp_enqueue_script(
+				'umin-scan',
+				UMIN_URL . 'assets/js/scan.js',
+				array( 'wp-api-fetch', 'wp-i18n' ),
+				UMIN_VERSION,
+				true
+			);
+
+			wp_set_script_translations( 'umin-scan', 'unstoppable-migration-inspector' );
+
+			wp_localize_script(
+				'umin-scan',
+				'uminScan',
+				array(
+					'namespace'  => \UnstoppableSolutions\MigrationInspector\REST\REST_Controller::NAMESPACE_V1,
+					'resultsUrl' => Admin_Menu::url( Admin_Menu::SCAN_SLUG ),
+				)
+			);
+		}
+
 		if ( Admin_Menu::is_snapshots_screen( $hook_suffix ) ) {
 			wp_enqueue_script(
 				'umin-snapshots',

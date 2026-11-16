@@ -37,6 +37,11 @@ final class Admin_Menu {
 	const SNAPSHOTS_SLUG = 'umin-snapshots';
 
 	/**
+	 * Scan results page slug.
+	 */
+	const SCAN_SLUG = 'umin-scan';
+
+	/**
 	 * Register hooks.
 	 *
 	 * @return void
@@ -68,6 +73,15 @@ final class Admin_Menu {
 			Capabilities::VIEW,
 			self::SLUG,
 			array( Dashboard_Page::class, 'render' )
+		);
+
+		add_submenu_page(
+			self::SLUG,
+			__( 'Scan Results', 'unstoppable-migration-inspector' ),
+			__( 'Scan Results', 'unstoppable-migration-inspector' ),
+			Capabilities::VIEW,
+			self::SCAN_SLUG,
+			array( Scan_Page::class, 'render' )
 		);
 
 		add_submenu_page(
@@ -137,7 +151,7 @@ final class Admin_Menu {
 
 		// Submenu hook suffixes start with the translated menu title, so
 		// match on the page slug at the end instead.
-		foreach ( array( self::SETTINGS_SLUG, self::SNAPSHOTS_SLUG ) as $slug ) {
+		foreach ( array( self::SETTINGS_SLUG, self::SNAPSHOTS_SLUG, self::SCAN_SLUG ) as $slug ) {
 			$suffix = '_page_' . $slug;
 			if ( substr( $hook_suffix, -strlen( $suffix ) ) === $suffix ) {
 				return true;
@@ -157,5 +171,24 @@ final class Admin_Menu {
 		$suffix = '_page_' . self::SNAPSHOTS_SLUG;
 
 		return substr( (string) $hook_suffix, -strlen( $suffix ) ) === $suffix;
+	}
+
+	/**
+	 * Whether the hook suffix is the dashboard or the scan results screen,
+	 * where scans are started.
+	 *
+	 * @param string $hook_suffix Hook suffix.
+	 * @return bool
+	 */
+	public static function is_scan_screen( $hook_suffix ) {
+		$hook_suffix = (string) $hook_suffix;
+
+		if ( 'toplevel_page_' . self::SLUG === $hook_suffix ) {
+			return true;
+		}
+
+		$suffix = '_page_' . self::SCAN_SLUG;
+
+		return substr( $hook_suffix, -strlen( $suffix ) ) === $suffix;
 	}
 }

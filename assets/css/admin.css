@@ -278,3 +278,144 @@
 .umin-row--missing td {
 	background: #fcf0f1;
 }
+
+/* Scan results */
+
+.umin-badge--notice {
+	background: #f0f6fc;
+	color: #043959;
+}
+
+.umin-progress--wide {
+	flex: 1 0 100%;
+}
+
+.umin-totals {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin: 16px 0 4px;
+	padding: 0;
+	list-style: none;
+}
+
+.umin-totals__item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 8px 14px;
+	margin: 0;
+}
+
+.umin-totals__count {
+	font-size: 22px;
+	font-weight: 600;
+	line-height: 1;
+}
+
+.umin-category {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-left-width: 4px;
+	border-radius: 4px;
+	padding: 4px 20px 12px;
+	margin: 20px 0;
+}
+
+.umin-category__title {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+.umin-category__empty {
+	color: #50575e;
+}
+
+.umin-group {
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	margin: 10px 0;
+}
+
+.umin-group__summary {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 10px;
+	padding: 10px 12px;
+	cursor: pointer;
+	font-weight: 600;
+}
+
+.umin-group__summary:focus-visible {
+	outline: 2px solid #2271b1;
+	outline-offset: -2px;
+}
+
+.umin-group__title {
+	flex: 1 1 260px;
+}
+
+.umin-group__count {
+	color: #50575e;
+	font-weight: 400;
+}
+
+.umin-group__body {
+	padding: 0 12px 12px;
+	max-width: 100ch;
+}
+
+.umin-group__action {
+	background: #f6f7f7;
+	border-left: 3px solid #2271b1;
+	padding: 8px 10px;
+}
+
+.umin-findings {
+	max-width: none;
+	margin-top: 8px;
+}
+
+.umin-findings__item {
+	width: 32%;
+}
+
+.umin-findings td {
+	vertical-align: top;
+	word-break: break-word;
+}
+
+.umin-excerpt code,
+.umin-files code {
+	font-size: 12px;
+}
+
+.umin-files {
+	margin: 4px 0 0;
+}
+
+.umin-pagination {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+
+.umin-checks-run,
+.umin-locations summary {
+	cursor: pointer;
+}
+
+.umin-checks-run {
+	margin-top: 12px;
+	color: #50575e;
+}
+
+.umin-checks-run summary {
+	cursor: pointer;
+}
