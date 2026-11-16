@@ -3,7 +3,7 @@ Contributors: paramedic192
 Tags: migration, site health, mixed content, broken images, search replace
 Requires at least: 6.5
 Tested up to: 7.1
-Stable tag: 0.1.0
+Stable tag: 0.3.0
 Requires PHP: 7.4
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -14,7 +14,7 @@ Checks a WordPress site after it has been moved and explains what did not transf
 
 You moved your WordPress site to a new host, server or domain. Did everything arrive? Unstoppable Migration Inspector answers that question.
 
-**This is a development build (0.1.0).** It contains the dashboard, the read-only scanner, migration snapshots and settings. Repair tools and reports are being built in stages and are not included yet. Nothing below the "Planned" heading works in this build.
+**This is a development build (0.3.0).** It contains the dashboard, the read-only scanner, migration snapshots and settings. Repair tools and reports are being built in stages and are not included yet. Nothing below the "Planned" heading works in this build.
 
 = Included in this build =
 
@@ -105,12 +105,20 @@ The plugin stores its settings in one WordPress option (`umin_settings`) and cre
 
 == Changelog ==
 
+= 0.3.0 =
+* Development build (Phase 2b).
+* Read-only scanner: Scan Website on the dashboard, a Scan Results screen with severity, explanation, next step and affected items for each finding, and resumable scanning for large sites.
+
+= 0.2.0 =
+* Development build (Phase 2a).
+* Migration snapshots: capture, compare (not found, changed, created after snapshot, not in snapshot), secure export and import, WooCommerce HPOS and legacy order storage.
+* Snapshot identity check, content fingerprints, and an export option without them.
+* Clearer comparison results on staging copies (table prefix, backup and staging tool tables).
+
 = 0.1.0 =
 * Development build: plugin foundation, Migration Health dashboard, tabbed settings that save each tab independently, database tables, REST status route and uninstall routine.
-* Migration snapshots: capture, compare (missing, changed, created after snapshot, not in snapshot), secure export and import, WooCommerce HPOS and legacy order storage.
-* Read-only scanner: Scan Website on the dashboard, a Scan Results screen with severity, explanation, next step and affected items for each finding, and resumable scanning for large sites.
 
 == Upgrade Notice ==
 
-= 0.1.0 =
+= 0.3.0 =
 Development build. Not for production use.
