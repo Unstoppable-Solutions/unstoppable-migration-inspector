@@ -33,7 +33,7 @@ for ( $done = 0; $done < $posts_wanted; $done += 1000 ) {
 	$values = array();
 	for ( $i = 0; $i < 1000; $i++ ) {
 		$n        = $done + $i;
-		$values[] = $wpdb->prepare( '(%d, 1, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)', $first_post + $n, $now, $now, str_repeat( 'x', $n % 300 ), 'Bulk ' . $n, '', 'publish', 'bulk-' . $n, $now, $now, '', 'post' );
+		$values[] = $wpdb->prepare( '(%d, 1, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)', $first_post + $n, $now, $now, ( 0 === $n % 4001 ? 'Old link http://old-site.test/page-' . $n . ' ' : '' ) . str_repeat( 'x', $n % 300 ), 'Bulk ' . $n, '', 'publish', 'bulk-' . $n, $now, $now, '', 'post' );
 	}
 	$wpdb->query( "INSERT INTO {$wpdb->posts} (ID, post_author, post_date, post_date_gmt, post_content, post_title, post_excerpt, post_status, post_name, post_modified, post_modified_gmt, to_ping, post_type) VALUES " . implode( ',', $values ) );
 }
@@ -98,6 +98,26 @@ umin_t_same( 'Large site: exactly the ' . count( $lost_orders ) . ' scattered mi
 umin_t_check( 'Capture and comparison ran inside a 128 MB memory_limit', '128M' === ini_get( 'memory_limit' ) );
 umin_t_check( 'No capture step needed more than 16 MB extra', $capture_step_peak < 16 * 1048576, round( $capture_step_peak / 1048576, 2 ) . ' MB' );
 umin_t_check( 'No comparison step needed more than 16 MB extra', $compare_step_peak < 16 * 1048576, round( $compare_step_peak / 1048576, 2 ) . ' MB' );
+// --- Scanner on the same large site -------------------------------------
+update_option( 'home', 'https://new-big.example.com' );
+update_option( 'siteurl', 'https://new-big.example.com' );
+update_option( 'umin_settings', array_merge( UnstoppableSolutions\MigrationInspector\Core\Settings::all(), array( 'previous_domains' => array( 'http://old-site.test' ) ) ) );
+$planted = array();
+for ( $n = 0; $n < $posts_wanted; $n += 4001 ) {
+	// Some planted posts may be among the ones deleted above.
+	if ( null !== $wpdb->get_var( $wpdb->prepare( "SELECT ID FROM {$wpdb->posts} WHERE ID = %d", $first_post + $n ) ) ) {
+		$planted[] = (string) ( $first_post + $n );
+	}
+}
+$GLOBALS['umin_t_step_peak'] = 0;
+$start   = microtime( true );
+$scan_id = umin_t_scan( 8.0 );
+$scan_s  = microtime( true ) - $start;
+$scan_peak = $GLOBALS['umin_t_step_peak'];
+echo 'INFO  Scan took ' . round( $scan_s, 1 ) . ' s; most extra memory any single step needed: ' . round( $scan_peak / 1048576, 2 ) . " MB\n";
+umin_t_subset( 'Large site scan: every planted old-domain post is reported (' . count( $planted ) . ')', $planted, umin_t_finding_ids( $scan_id, 'old_urls_posts' ) );
+umin_t_check( 'No scan step needed more than 16 MB extra', $scan_peak < 16 * 1048576, round( $scan_peak / 1048576, 2 ) . ' MB' );
+
 echo 'INFO  Process peak memory ' . round( memory_get_peak_usage( true ) / 1048576, 1 ) . " MB (includes WordPress, WooCommerce and WP-CLI)\n";
 
 umin_t_done();

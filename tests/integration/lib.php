@@ -362,3 +362,51 @@ function umin_t_seed_woo( $orders = 40 ) {
 
 	return $out;
 }
+
+/**
+ * Run a scan to completion like the REST route does; returns the scan ID.
+ */
+function umin_t_scan( $budget = 0.5, array $request = array() ) {
+	$started = UnstoppableSolutions\MigrationInspector\Scanner\Scan_Service::start( $request );
+	if ( is_wp_error( $started ) ) {
+		umin_t_check( 'start scan', false, $started->get_error_message() );
+		return 0;
+	}
+	$run = umin_t_run_job( $started['job_id'], $budget );
+	umin_t_check( 'Scan completes', 'completed' === $run['status'], $run['status'] . ' ' . $run['message'] );
+	return $started['scan_id'];
+}
+
+/**
+ * Object IDs of one check's findings, optionally of one kind.
+ */
+function umin_t_finding_ids( $scan_id, $check, $kind = '' ) {
+	global $wpdb;
+	$table = Schema::table( 'umin_findings' );
+	$rows  = '' === $kind
+		? $wpdb->get_col( $wpdb->prepare( 'SELECT object_id FROM %i WHERE scan_id = %d AND check_key = %s ORDER BY id', $table, $scan_id, $check ) )
+		: $wpdb->get_col( $wpdb->prepare( 'SELECT object_id FROM %i WHERE scan_id = %d AND check_key = %s AND kind = %s ORDER BY id', $table, $scan_id, $check, $kind ) );
+	return array_map( 'strval', (array) $rows );
+}
+
+/**
+ * Every finding of a scan as "check|kind|severity|object_type|object_id", sorted.
+ */
+function umin_t_finding_signature( $scan_id ) {
+	global $wpdb;
+	$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT check_key, kind, severity, object_type, object_id FROM %i WHERE scan_id = %d', Schema::table( 'umin_findings' ), $scan_id ), ARRAY_N );
+	$out  = array();
+	foreach ( (array) $rows as $row ) {
+		$out[] = implode( '|', $row );
+	}
+	sort( $out );
+	return $out;
+}
+
+/**
+ * The stored summary of a scan.
+ */
+function umin_t_scan_summary( $scan_id ) {
+	$scan = ( new UnstoppableSolutions\MigrationInspector\Scanner\Scan_Repository() )->get( $scan_id );
+	return null === $scan ? array() : $scan['summary'];
+}

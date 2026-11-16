@@ -154,7 +154,7 @@ run_single_site_checks() {
 	for t in ${UMIN_TABLES}; do
 		check "Table ${t} created" "$(table_exists "${t}")" "yes"
 	done
-	check "Schema version stored" "$(wp option get umin_db_version)" "3"
+	check "Schema version stored" "$(wp option get umin_db_version)" "4"
 	contains "Data is kept on uninstall by default" "$(setting)" '"delete_data_on_uninstall":false'
 
 	echo; echo "== ZIP contents =="
@@ -171,7 +171,7 @@ run_single_site_checks() {
 	start_server
 	login admin admin "${JAR_ADMIN}"
 	local page code
-	for path in "/wp-admin/admin.php?page=${SLUG}" "/wp-admin/admin.php?page=umin-snapshots" "/wp-admin/admin.php?page=umin-settings" \
+	for path in "/wp-admin/admin.php?page=${SLUG}" "/wp-admin/admin.php?page=umin-snapshots" "/wp-admin/admin.php?page=umin-scan" "/wp-admin/admin.php?page=umin-settings" \
 		"/wp-admin/admin.php?page=umin-settings&tab=performance" "/wp-admin/admin.php?page=umin-settings&tab=data" \
 		"/wp-admin/admin.php?page=umin-settings&tab=nonsense" "/wp-admin/plugins.php" "/wp-admin/index.php"; do
 		code="$(status_of "${JAR_ADMIN}" "${path}")"
@@ -182,6 +182,8 @@ run_single_site_checks() {
 	contains "Dashboard shows Not Tested overall" "${page}" "Not tested yet"
 	contains "WooCommerce category Not Applicable without WooCommerce" "${page}" "umin-badge--not_applicable"
 	lacks "Dashboard never claims healthy before a scan" "${page}" "umin-overall umin-status--passed"
+	contains "Scan Website button is active" "${page}" 'data-umin-action="scan"'
+	contains "Scan script enqueued on the dashboard" "${page}" "assets/js/scan.js"
 	contains "Admin stylesheet enqueued on plugin screen" "${page}" "assets/css/admin.css"
 	lacks "No inline style attributes from the plugin" "$(printf '%s' "${page}" | sed -n '/umin-wrap/,$p')" ' style="'
 	contains "Gold menu stylesheet enqueued" "$(get "${JAR_ADMIN}" '/wp-admin/index.php')" "assets/css/admin-menu.css"
@@ -269,6 +271,39 @@ run_single_site_checks() {
 	body="$(curl -s -X POST -b "${JAR_ADMIN}" -H "X-WP-Nonce: ${admin_nonce}" -H 'Content-Type: application/json' -d '{"label":"<script>alert(1)</script>Smoke"}' "${SITE}/?rest_route=/${SLUG}/v1/snapshots")"
 	contains "Admin can start a snapshot" "${body}" '"job_id"'
 	lacks "Snapshot labels are stripped of markup" "$(get "${JAR_ADMIN}" "/wp-admin/admin.php?page=umin-snapshots")" "<script>alert(1)"
+
+	echo; echo "== Scanner endpoints and a full scan over HTTP =="
+	code="$(curl -s -o /dev/null -w '%{http_code}' -X POST "${SITE}/?rest_route=/${SLUG}/v1/scans")"
+	check "Anonymous cannot start a scan" "${code}" "401"
+	code="$(curl -s -o /dev/null -w '%{http_code}' -X POST -b "${JAR_SUB}" -H "X-WP-Nonce: ${sub_nonce}" "${SITE}/?rest_route=/${SLUG}/v1/scans")"
+	check "Subscriber cannot start a scan" "${code}" "403"
+	code="$(curl -s -o /dev/null -w '%{http_code}' -X POST -b "${JAR_ADMIN}" "${SITE}/?rest_route=/${SLUG}/v1/scans")"
+	check "Admin without REST nonce cannot start a scan" "${code}" "401"
+	body="$(curl -s -X POST -b "${JAR_ADMIN}" -H "X-WP-Nonce: ${admin_nonce}" "${SITE}/?rest_route=/${SLUG}/v1/scans")"
+	contains "Admin can start a scan" "${body}" '"job_id"'
+	local scan_job scan_id status i
+	scan_job="$(printf '%s' "${body}" | sed -n 's/.*"job_id":\([0-9]*\).*/\1/p')"
+	scan_id="$(printf '%s' "${body}" | sed -n 's/.*"scan_id":\([0-9]*\).*/\1/p')"
+	status=""
+	for i in $(seq 1 200); do
+		status="$(curl -s -X POST -b "${JAR_ADMIN}" -H "X-WP-Nonce: ${admin_nonce}" "${SITE}/?rest_route=/${SLUG}/v1/jobs/${scan_job}/run" | sed -n 's/^{"status":"\([a-z]*\)".*/\1/p')"
+		[ "${status}" = "running" ] || break
+	done
+	check "Scan driven over REST completes" "${status}" "completed"
+	code="$(curl -s -o /dev/null -w '%{http_code}' -b "${JAR_SUB}" -H "X-WP-Nonce: ${sub_nonce}" "${SITE}/?rest_route=/${SLUG}/v1/scans/${scan_id}")"
+	check "Subscriber cannot read scan results" "${code}" "403"
+	code="$(curl -s -o /dev/null -w '%{http_code}' -X DELETE -b "${JAR_SUB}" -H "X-WP-Nonce: ${sub_nonce}" "${SITE}/?rest_route=/${SLUG}/v1/scans/${scan_id}")"
+	check "Subscriber cannot delete scans" "${code}" "403"
+	contains "Scan status is complete over REST" "$(curl -s -b "${JAR_ADMIN}" -H "X-WP-Nonce: ${admin_nonce}" "${SITE}/?rest_route=/${SLUG}/v1/scans/${scan_id}")" '"status":"complete"'
+	page="$(get "${JAR_ADMIN}" "/wp-admin/admin.php?page=umin-scan&scan=${scan_id}")"
+	contains "Results screen shows Migration Health" "${page}" "Migration Health:"
+	contains "Results screen lists checks run" "${page}" "Checks run"
+	contains "Results screen explains why findings matter" "${page}" "Why it matters:"
+	contains "Results screen gives a next step" "${page}" "Recommended next step:"
+	lacks "No inline style attributes on the results screen" "$(printf '%s' "${page}" | sed -n '/umin-wrap/,$p')" ' style="'
+	lacks "Dashboard no longer says Not tested after a scan" "$(get "${JAR_ADMIN}" "/wp-admin/admin.php?page=${SLUG}")" "Not tested yet"
+	code="$(status_of "${JAR_SUB}" "/wp-admin/admin.php?page=umin-scan")"
+	check "Subscriber cannot open Scan Results" "$( [ "${code}" = 302 ] || [ "${code}" = 403 ] && echo ok || echo "${code}" )" "ok"
 
 	echo; echo "== UMIN_DISABLE_WRITES kill switch =="
 	wp config set UMIN_DISABLE_WRITES true --raw >/dev/null

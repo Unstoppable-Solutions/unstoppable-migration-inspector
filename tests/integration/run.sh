@@ -14,6 +14,8 @@
 #              some rows the way a partial import does, import, compare
 #   unrelated  import site "hpos"'s snapshot on an unrelated fresh site;
 #              comparing must require an explicit acknowledgment (run after hpos)
+#   scan       scanner on a clean store, then on a store with planted
+#              migration problems (exact findings, read-only, resumable)
 #   large      200,000 posts and 20,000 orders with memory_limit=128M
 #              (needs DB=mysql; slow)
 #
@@ -156,6 +158,14 @@ scenario_unrelated() {
 	run_scenario "Unrelated site needs acknowledgment" "${BASE}/other" scenario-unrelated.php "${BASE}/hpos-export.json"
 }
 
+scenario_scan() {
+	new_site "${BASE}/scan-clean" yes umin_int_scan_clean
+	run_scenario "Scanner: clean store" "${BASE}/scan-clean" scenario-scan.php clean
+	new_site "${BASE}/scan-damaged" yes umin_int_scan_damaged
+	wp_at "${BASE}/scan-damaged" config set WP_CACHE true --raw >/dev/null
+	run_scenario "Scanner: damaged migration" "${BASE}/scan-damaged" scenario-scan.php damaged
+}
+
 scenario_large() {
 	if [ "${DB:-sqlite}" != "mysql" ]; then
 		echo "SKIP  large scenario needs DB=mysql"
@@ -170,7 +180,7 @@ mkdir -p "${BASE}"
 
 SCENARIOS=("$@")
 if [ ${#SCENARIOS[@]} -eq 0 ]; then
-	SCENARIOS=(hpos legacy switch migrate unrelated)
+	SCENARIOS=(hpos legacy switch migrate unrelated scan)
 fi
 
 for s in "${SCENARIOS[@]}"; do
