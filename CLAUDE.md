@@ -17,6 +17,14 @@ Checks a WordPress site after it has been moved and explains what did not transf
 - **Base44 app:** _(none yet — fill in when a Pro version is scaffolded there)_
 - When updating code that affects both the free (this repo) and the Base44 Pro app, apply the matching change in both places in the same session.
 
+## Versioning (owner rule, 16 Nov 2026)
+
+Change the version with every update that is handed over or merged:
+- each development phase raises the minor version (0.2.0 = snapshots, 0.3.0 = scanner);
+- every later build with changes raises the patch version (0.3.1, 0.3.2…).
+
+Add the changelog entry to `readme.txt` (`= X.Y.Z =`) and `CHANGELOG.md` (`## [X.Y.Z]`) first, then run `bin/bump-version.sh X.Y.Z`, which updates the `Version:` header, `UMIN_VERSION` (also the CSS/JS cache-busting version) and `Stable tag:`. `tests/unit/VersionTest.php` fails if they disagree. Name delivered ZIPs `unstoppable-migration-inspector-X.Y.Z.zip`.
+
 ## Release workflow
 
 Releases are deployed to WordPress.org SVN automatically by GitHub Actions. The workflow is identical across every `unstoppable-solutions/*` plugin:
