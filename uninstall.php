@@ -32,9 +32,10 @@ function umin_uninstall_current_site() {
 	$settings = get_option( 'umin_settings', array() );
 
 	// Only an explicit opt-in removes data. Anything else keeps it.
+	// Same "on" values the settings validator accepts.
 	$opted_in = is_array( $settings )
 		&& array_key_exists( 'delete_data_on_uninstall', $settings )
-		&& true === $settings['delete_data_on_uninstall'];
+		&& in_array( $settings['delete_data_on_uninstall'], array( true, 1, '1', 'yes', 'on', 'true' ), true );
 
 	if ( ! $opted_in ) {
 		return;

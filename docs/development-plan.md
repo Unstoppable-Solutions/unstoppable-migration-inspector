@@ -105,6 +105,8 @@ Nothing here claims "better" or "more powerful".
   February 2027) will require PHP 8.1. HPOS is now the default for new stores.
 
 **Chosen minimums:** `Requires at least: 6.5`, `Requires PHP: 7.4`.
+`Tested up to: 7.1` is declared in `readme.txt` only. The current Plugin
+Check treats a `Tested up to` line in the main PHP header as an error.
 
 - 6.5 covers the `%i` identifier placeholder (added in 6.2), current REST and
   `wp.apiFetch` behaviour, and the `Requires Plugins` header. This leaves

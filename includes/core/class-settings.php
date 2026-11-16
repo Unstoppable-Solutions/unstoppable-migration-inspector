@@ -42,10 +42,13 @@ final class Settings {
 	/**
 	 * Register the setting with WordPress.
 	 *
+	 * Registered on init (not admin_init) so validation also applies when the
+	 * option is saved from WP-CLI, cron or the REST API.
+	 *
 	 * @return void
 	 */
 	public static function register() {
-		add_action( 'admin_init', array( __CLASS__, 'register_setting' ) );
+		add_action( 'init', array( __CLASS__, 'register_setting' ) );
 	}
 
 	/**

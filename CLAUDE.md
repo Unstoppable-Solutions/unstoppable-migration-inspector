@@ -25,8 +25,10 @@ Releases are deployed to WordPress.org SVN automatically by GitHub Actions. The 
 2. Bump the version in **all** of these:
    - `unstoppable-migration-inspector.php` — `Version:` header
    - `unstoppable-migration-inspector.php` — `UMIN_VERSION` constant (if present)
-   - `readme.txt` — `Stable tag:`
+   - `readme.txt` — `Stable tag:` (and `Tested up to:` if WordPress has a new .x)
    - `readme.txt` — add a `== Changelog ==` entry
+   - `CHANGELOG.md`
+   Then run `composer phpcs`, `composer test` and `tests/smoke/run.sh` on the built ZIP.
 3. Commit and push `main`.
 4. On GitHub, create a new **Release** tagged `vX.Y.Z` (semver) with the changelog in the body.
 5. The `deploy-to-wporg.yml` workflow fires and pushes the release to WP.org SVN.
@@ -59,7 +61,7 @@ Every push and PR runs the official WordPress Plugin Check against the codebase 
 
 - **GPL-2.0-or-later** on everything.
 - **One author** for Contributors: in `readme.txt`: `paramedic192` (Dave Stevens).
-- **Tested up to** is bumped as WordPress ships each new .x.
+- **Tested up to** is bumped as WordPress ships each new .x. It lives in `readme.txt` **only**: Plugin Check (Nov 2026) reports `plugin_header_tested_up_to_not_allowed` as an error if the main PHP header also declares it.
 - **Plugin Check CI config** (`.github/workflows/plugin-check.yml`) is standard across the org: `exclude-checks: late_escaping` + `exclude-files` lists the GitHub-only files (`.github`, `.distignore`, `.gitignore`, `.gitattributes`, `README.md`, `CLAUDE.md`, `SECURITY.md`, `CONTRIBUTING.md`, `CHANGELOG.md`).
 - **`.distignore`** keeps GitHub-only files out of the WP.org zip (CI, docs, this file).
 - **Prefer `phpcs:ignore` + inline rationale** over removing the ignored check from CI entirely — a specific ignore documents the decision at the call site; a check removal silently covers future code too.
