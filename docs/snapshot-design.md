@@ -313,8 +313,8 @@ MySQL 8.4, with PHP 8.3 and PHP 7.4 (see §6.1).
 | PHP | Database | Lint | Unit (108) | Smoke (103, incl. multisite and Plugin Check) | Integration (340) | Large (10) |
 |---|---|---|---|---|---|---|
 | 8.3 | SQLite | pass | pass | pass | pass | n/a (needs MySQL) |
-| 8.3 | MariaDB 10.11.14 | — | — | pass | pass | pass ×5 |
-| 8.3 | MySQL 8.4.13 | — | — | pass | pass | pass ×2 |
+| 8.3 | MariaDB 10.11.14 | — | — | pass | pass | pass ×2 (×3 more before the index hint) |
+| 8.3 | MySQL 8.4.13 | — | — | pass | pass | pass (×1 more before the index hint) |
 | 7.4.33 | MySQL 8.4.13 | pass | pass | pass | pass | pass |
 | 7.4.33 | SQLite | — | — | not possible | not possible | — |
 
