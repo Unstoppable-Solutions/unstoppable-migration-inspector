@@ -26,9 +26,10 @@ final class Config_Diff {
 	 *
 	 * @param array<string, mixed> $before Snapshot configuration.
 	 * @param array<string, mixed> $after  Current configuration.
+	 * @param bool|null            $roles_ok Whether user roles exist under this site's prefix (null: not checked).
 	 * @return array<int, array{key: string, before: mixed, after: mixed, severity: string, note: string}>
 	 */
-	public static function compare( array $before, array $after ) {
+	public static function compare( array $before, array $after, $roles_ok = null ) {
 		$diffs = array();
 
 		foreach ( array( 'home', 'siteurl' ) as $key ) {
@@ -38,7 +39,7 @@ final class Config_Diff {
 					self::get( $before, $key ),
 					self::get( $after, $key ),
 					'info',
-					__( 'The site address changed. Expected after a domain move. The scanner checks for leftover references to the old address.', 'unstoppable-migration-inspector' )
+					__( 'The site address changed (new domain or folder). Expected after a move and on staging copies. Scan Website checks for leftover references to the old address.', 'unstoppable-migration-inspector' )
 				);
 			}
 		}
@@ -58,8 +59,12 @@ final class Config_Diff {
 				'table_prefix',
 				self::get( $before, 'table_prefix' ),
 				self::get( $after, 'table_prefix' ),
-				'warning',
-				__( 'The database table prefix changed. Settings and user roles stored under the old prefix are not used by WordPress.', 'unstoppable-migration-inspector' )
+				false === $roles_ok ? 'warning' : 'info',
+				true === $roles_ok
+					? __( 'The database table prefix changed, and user roles were moved to the new prefix correctly. Common with staging copies and some migration tools.', 'unstoppable-migration-inspector' )
+					: ( false === $roles_ok
+						? __( 'The database table prefix changed, but user roles were not found under the new prefix, so users may have no role on this site. Scan Website explains how to fix it.', 'unstoppable-migration-inspector' )
+						: __( 'The database table prefix changed. Scan Website checks that user roles were moved to the new prefix.', 'unstoppable-migration-inspector' ) )
 			);
 		}
 

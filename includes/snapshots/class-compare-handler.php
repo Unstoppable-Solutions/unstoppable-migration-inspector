@@ -124,7 +124,7 @@ final class Compare_Handler extends Job_Handler {
 						'snapshot' => isset( $header['order_mode'] ) ? (string) $header['order_mode'] : Woo_Storage::MODE_NONE,
 						'site'     => $storage['mode'],
 					),
-					'config'             => Config_Diff::compare( isset( $header['config'] ) ? (array) $header['config'] : array(), Site_Profile::config() ),
+					'config'             => Config_Diff::compare( isset( $header['config'] ) ? (array) $header['config'] : array(), Site_Profile::config(), self::roles_ok() ),
 					'identity'           => array_merge(
 						Identity_Check::assess( (int) $params['snapshot_id'], $header ),
 						array( 'acknowledged' => ! empty( $params['acknowledged'] ) )
@@ -302,6 +302,36 @@ final class Compare_Handler extends Job_Handler {
 		$state['lo']  = 0;
 
 		return $state;
+	}
+
+	/**
+	 * Whether this site's table prefix has its user roles option and at
+	 * least one user with a role, i.e. a prefix change was completed.
+	 *
+	 * @return bool
+	 */
+	private static function roles_ok() {
+		global $wpdb;
+
+		$prefix = $wpdb->get_blog_prefix();
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Read-only presence checks.
+		$option = $wpdb->get_var( $wpdb->prepare( "SELECT option_id FROM {$wpdb->options} WHERE option_name = %s LIMIT 1", $prefix . 'user_roles' ) );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Read-only presence checks.
+		$caps = $wpdb->get_var( $wpdb->prepare( "SELECT umeta_id FROM {$wpdb->usermeta} WHERE meta_key = %s LIMIT 1", $prefix . 'capabilities' ) );
+
+		return null !== $option && null !== $caps;
+	}
+
+	/**
+	 * Whether a table (name without prefix) belongs to a backup, migration
+	 * or staging tool, whose contents normally differ between copies.
+	 *
+	 * @param string $table Table name.
+	 * @return bool
+	 */
+	public static function is_tool_table( $table ) {
+		return (bool) preg_match( '/(wpvivid|wpstg|wp_staging|duplicator|ai1wm|updraft|backwpup|wpmdb|blogvault|bv_|migrateguru|xcloner|backuply|jetbackup)/i', (string) $table );
 	}
 
 	/**
