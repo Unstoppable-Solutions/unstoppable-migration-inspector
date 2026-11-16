@@ -351,7 +351,7 @@ MySQL 8.4, with PHP 8.3 and PHP 7.4 (see §6.1).
 
 ### 6.1 Test matrix actually run (16 Nov 2026)
 
-| PHP | Database | Lint | Unit (108) | Smoke (103, incl. multisite and Plugin Check) | Integration (340) | Large (10) |
+| PHP | Database | Lint | Unit (111) | Smoke (103, incl. multisite and Plugin Check) | Integration (352) | Large (10) |
 |---|---|---|---|---|---|---|
 | 8.3 | SQLite | pass | pass | pass | pass | n/a (needs MySQL) |
 | 8.3 | MariaDB 10.11.14 | — | — | pass | pass | pass ×2 (×3 more before the index hint) |
@@ -363,8 +363,9 @@ PHP 7.4 on SQLite cannot run: the SQLite Database Integration plugin (3.1.3)
 requires SQLite 3.37, and the official PHP 7.4 image ships SQLite 3.34.1. This
 is a limit of the test environment, not of this plugin.
 
-All rows above were run on the final Phase 2a code (commit `27eb2ea` and
-later). GitHub Actions is configured to run lint (7.4, 8.1, 8.3, 8.4), PHPCS,
-PHPUnit (7.4, 8.3) and Plugin Check; its results are not listed here because
-they could not be read from the development session.
-
+Lint, unit, smoke and integration were run on the final Phase 2a code
+(commit `95c8323`). The large-site runs were made on `27eb2ea`; later commits
+changed only export options, the identity verdict, wording and tests, not
+capture or comparison. GitHub Actions is configured to run lint (7.4, 8.1,
+8.3, 8.4), PHPCS, PHPUnit (7.4, 8.3) and Plugin Check; its results are not
+listed here because they could not be read from the development session.
