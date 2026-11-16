@@ -19,7 +19,7 @@ tell a **changed** record from an untouched one.
 
 | Type key | Source | Per-record fields (besides ID) | Excluded |
 |---|---|---|---|
-| `post:{post_type}` (one per type: `post`, `page`, `attachment`, `product`, `product_variation`, `nav_menu_item`, `wp_block`, custom types…) | `posts` | status code, modified time (GMT, unix), content length in bytes | `revision`, `auto-draft` status, `oembed_cache`, `customize_changeset`, all WooCommerce order types (tracked below) |
+| `post:{post_type}` (one per type: `post`, `page`, `attachment`, `product`, `product_variation`, `nav_menu_item`, `wp_block`, custom types…) | `posts` | status code, modified time (GMT, unix), content length in bytes, 16-bit salted content digest (§1.4) | `revision`, `auto-draft` status, `oembed_cache`, `customize_changeset`, all WooCommerce order types (tracked below) |
 | `user` | `users` (single site); members of this site (`{prefix}capabilities`) on multisite | primary role code | — |
 | `comment` | `comments` | approval code, comment type code | — |
 | `term:{taxonomy}` | `term_taxonomy` | object count | — |
@@ -57,6 +57,38 @@ Only the fields listed above are read into a snapshot. Specifically **never**:
 An automated test scans every export for email addresses, known user logins,
 display names, test customer names and post titles, and fails on any match.
 
+### 1.4 Content digest (evaluated and adopted)
+
+**Problem.** Status, modified time and content length miss an edit that keeps
+the same length (a changed digit in a price table, a URL swapped for one of
+equal length), and also an import that rewrites content without touching
+`post_modified_gmt`.
+
+**Options considered.**
+
+| Option | Detects same-length change | Privacy | Cost |
+|---|---|---|---|
+| No hash (lengths only) | No | Nothing derived from content | — |
+| Full hash (MD5/SHA-256 of content) | Yes | A full unsalted hash of short content (a one-word page, a coupon code) can be confirmed by guessing. Not acceptable in an export. | 16–32 bytes per post |
+| **Salted 16-bit digest (adopted)** | Yes, missing about 1 in 65,536 changes | Salt is random per snapshot, so digests cannot be matched across snapshots or against a guess list built without the salt; 16 bits cannot identify content | 2 bytes per post |
+
+**What is stored.** `LEFT(MD5(CONCAT(salt, post_content)), 4)`, computed in
+SQL so the content never reaches PHP. The 8-byte random salt
+(`content_salt`, hex) is kept in the snapshot header and exported with it, so
+an imported snapshot can be compared on the destination.
+
+**Limits stated in the UI.** A digest mismatch with equal length is reported
+as "content changed, although its size is the same". A matching digest is not
+proof that content is identical. The digest is a change signal, not an
+integrity check or a backup, and is never used to repair anything.
+
+**Measured cost.** Stored record data for 200,000 posts and 20,000 orders grew
+from 0.24 MB to 0.63 MB (random digests do not compress).
+
+**Older snapshots.** A snapshot without a salt (empty `content_salt`) stores
+a digest of 0, and the live side is read with digest 0 too, so the digest
+never reports a change for it.
+
 ---
 
 ## 2. Storage and resource limits
@@ -87,10 +119,37 @@ display names, test customer names and post titles, and fails on any match.
   - exact `COUNT(*)` for tables estimated under 1,000,000 rows
   - otherwise the `information_schema` estimate, marked "approximate"
   - one table per step at most
+- Keyset scans on `posts` and `wc_orders` use `USE INDEX (PRIMARY)`. Without
+  it MariaDB chose the `type_status_author` index and sorted most of the post
+  type on every batch (one batch: 79 ms without, 8 ms with, 200,000 posts).
+  MySQL 8.4 already chose the primary key. The SQLite translator accepts the
+  hint.
 - Each request stops within the time budget (default 8 s). A closed browser or
   timeout leaves the job paused at its last committed chunk.
 - A snapshot is only usable once its status is `complete`. Partial snapshots
   can be resumed or deleted, never compared.
+
+### Measured resource use (16 Nov 2026)
+
+Large-site test: 200,000 posts and 20,000 WooCommerce orders (HPOS), batch
+size 500, `memory_limit=128M`, time budget 8 s. "Extra memory per step" is
+the most any single job step allocated beyond what was in use before it.
+
+| Environment | Capture | Comparison | Extra memory per step (capture / comparison) | Result |
+|---|---|---|---|---|
+| PHP 8.3, MariaDB 10.11, before the index hint (3 runs) | 24.5–25.8 s | 2.2–2.5 s | 1.45 / 1.14 MB | 10/10 each |
+| PHP 8.3, MariaDB 10.11, with the index hint (2 runs) | 2.5–2.6 s | 2.3–2.4 s | 1.48 / 1.14 MB | 10/10 each |
+| PHP 8.3, MySQL 8.4.13 (2 runs) | 3.9–4.2 s | 3.7–4.1 s | 1.48 / 1.14 MB | 10/10 each |
+| PHP 7.4.33, MySQL 8.4.13 | 4.3 s | 4.2 s | 10.87 / 10.59 MB | 10/10 |
+
+- Stored snapshot record data: 0.63 MB. The 37 deleted posts and 11 deleted
+  orders were listed by exact ID in every run.
+- Per request, measured in a fresh PHP process on the large site:
+  WordPress + WooCommerce + WP-CLI with no plugin work used 112.2 MB; a full
+  8-second capture or comparison request peaked at 112.6–113.9 MB.
+- PHP 7.4 uses about seven times more memory per step than PHP 8.3 (its
+  arrays are less compact), still under the test's 16 MB-per-step ceiling.
+  Lowering "Rows per batch" reduces it proportionally.
 
 ### Consistency note shown in the UI
 
@@ -147,6 +206,36 @@ Results are stored in `umin_comparisons` (header and per-type totals) and
 detail. They are paginated in the UI, and missing IDs can be downloaded as
 CSV (type, ID).
 
+### Not found is not the same as lost
+
+The UI and readme call the bucket **Not found** and say so explicitly for
+WooCommerce orders: an order ID that is not found on this site means the
+record is not in this database. It does not by itself prove the order was
+lost. It may have been deliberately deleted, moved to another store, or the
+snapshot may come from a different site. Each orders section with not-found
+IDs shows that caution and suggests checking the source site or a backup
+before treating the order as lost.
+
+### Source/destination identity check
+
+Comparing a snapshot with an unrelated site would report thousands of
+"not found" IDs that mean nothing. Before a comparison starts, the snapshot
+is checked against this site:
+
+| Signal | How |
+|---|---|
+| Site key | A random key (`umin_site_key` option) created on activation and stored in every snapshot. It travels with a database copy, so a migrated site keeps it. |
+| Site name | Salted hash of `blogname` (no name stored in clear) |
+| Domain, table prefix | From the configuration fingerprint |
+| ID overlap | Up to 50 sampled IDs per main type checked on this site |
+
+Verdicts: **same site** (key matches), **likely same** (≥ 90% overlap plus
+another signal), **unverified** (≥ 50% overlap, or no sample but another
+signal), **likely unrelated** (anything else). The last two need an explicit
+acknowledgment: the REST call returns 409 `umin_identity_unconfirmed` with
+the reasons, the UI asks the administrator to confirm, and the acknowledgment
+and verdict are stored in the comparison result and shown above it.
+
 ---
 
 ## 4. Export and import
@@ -202,7 +291,8 @@ Unit:
 - import validator: bad keys, types, ordering, sizes and checksums
 - the privacy allowlist
 
-Integration: WordPress 7.1, WooCommerce 11.3, on SQLite and MariaDB.
+Integration: WordPress 7.1, WooCommerce 11.3, on SQLite, MariaDB 10.11 and
+MySQL 8.4, with PHP 8.3 and PHP 7.4 (see §6.1).
 - Seeded posts, pages, attachments, users, comments, terms and orders. After
   capture, some records are deleted, changed and added. The comparison must
   list **exactly** those IDs in the right buckets.
@@ -217,3 +307,19 @@ Integration: WordPress 7.1, WooCommerce 11.3, on SQLite and MariaDB.
 - The PII scan of exports passes.
 - The checksum of every non-plugin table is identical before and after
   capture and comparison (proving read-only).
+
+### 6.1 Test matrix actually run (16 Nov 2026)
+
+| PHP | Database | Lint | Unit (108) | Smoke (103, incl. multisite and Plugin Check) | Integration (340) | Large (10) |
+|---|---|---|---|---|---|---|
+| 8.3 | SQLite | pass | pass | pass | pass | n/a (needs MySQL) |
+| 8.3 | MariaDB 10.11.14 | — | — | pass | pass | pass ×5 |
+| 8.3 | MySQL 8.4.13 | — | — | pass | pass | pass ×2 |
+| 7.4.33 | MySQL 8.4.13 | pass | pass | pass | pass | pass |
+| 7.4.33 | SQLite | — | — | not possible | not possible | — |
+
+PHP 7.4 on SQLite cannot run: the SQLite Database Integration plugin (3.1.3)
+requires SQLite 3.37, and the official PHP 7.4 image ships SQLite 3.34.1. This
+is a limit of the test environment, not of this plugin. GitHub Actions also
+runs lint (7.4, 8.1, 8.3, 8.4), PHPCS and PHPUnit (7.4, 8.3).
+
