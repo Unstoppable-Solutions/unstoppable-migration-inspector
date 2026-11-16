@@ -70,12 +70,38 @@ equal length), and also an import that rewrites content without touching
 |---|---|---|---|
 | No hash (lengths only) | No | Nothing derived from content | — |
 | Full hash (MD5/SHA-256 of content) | Yes | A full unsalted hash of short content (a one-word page, a coupon code) can be confirmed by guessing. Not acceptable in an export. | 16–32 bytes per post |
-| **Salted 16-bit digest (adopted)** | Yes, missing about 1 in 65,536 changes | Salt is random per snapshot, so digests cannot be matched across snapshots or against a guess list built without the salt; 16 bits cannot identify content | 2 bytes per post |
+| **Salted 16-bit digest (adopted)** | Yes, missing about 1 in 65,536 changes | Leaks 16 bits per post to anyone holding the file (see "Privacy limits" below). The salt only stops matching across snapshots and precomputed tables. | 2 bytes per post |
 
 **What is stored.** `LEFT(MD5(CONCAT(salt, post_content)), 4)`, computed in
 SQL so the content never reaches PHP. The 8-byte random salt
 (`content_salt`, hex) is kept in the snapshot header and exported with it, so
 an imported snapshot can be compared on the destination.
+
+**Privacy limits (stated plainly, not hidden).** The salt is in the export
+because the destination needs it to compute matching digests. So the salt
+does **not** protect against someone who holds the file:
+- They can test any guess at a post's content: a wrong guess matches by
+  chance 1 time in 65,536, so a match is strong evidence.
+- Combined with the stored content length, short or predictable content can
+  be recovered by trying every candidate. A 4-digit PIN as the only content
+  of a private post has 10,000 candidates; on average about 0.15 wrong ones
+  would also match, so the real one is usually identified.
+- Long, unpredictable content cannot be recovered this way: one candidate
+  in 65,536 matches, so among the astronomically many possible texts of that
+  length a match does not single out the real one.
+
+What the salt does do: digests from two snapshots cannot be compared with
+each other, and no precomputed table works across files.
+
+Mitigations in the product:
+- The snapshots page and readme say exported files should be treated as
+  confidential, and explain why.
+- **Export Without Content Fingerprints** writes the same snapshot with
+  every digest set to 0 and an empty salt (chunk and overall checksums are
+  recomputed). Comparison then still finds not-found and changed records
+  (status, dates, length), but not same-length edits.
+- A snapshot that stays on the site where it was taken is in the site's own
+  database, which already holds the content itself.
 
 **Limits stated in the UI.** A digest mismatch with equal length is reported
 as "content changed, although its size is the same". A matching digest is not
@@ -229,9 +255,25 @@ is checked against this site:
 | Domain, table prefix | From the configuration fingerprint |
 | ID overlap | Up to 50 sampled IDs per main type checked on this site |
 
-Verdicts: **same site** (key matches), **likely same** (≥ 90% overlap plus
-another signal), **unverified** (≥ 50% overlap, or no sample but another
-signal), **likely unrelated** (anything else). The last two need an explicit
+Verdicts:
+
+| Site key | ID overlap | Verdict | Needs acknowledgment |
+|---|---|---|---|
+| matches | ≥ 90% or nothing to sample | **same site** | no |
+| matches | 50–89% | **likely same** | no |
+| matches | < 50% | **unverified** | yes |
+| differs/absent | ≥ 90% plus name, domain or prefix match | **likely same** | no |
+| differs/absent | ≥ 50%, or nothing to sample plus another signal | **unverified** | yes |
+| differs/absent | anything else | **likely unrelated** | yes |
+
+A matching key proves only that the database was copied from the
+snapshot's site at some point. It does not prove the two still hold the same
+records: an old staging copy, or a site built from a cloned template, keeps
+the key but diverges. So the ID sample can override a matching key, and
+address, prefix and name differences are always listed under "Differences
+noted", even for a same-site verdict. An integration test empties a copied
+site that kept the key and checks the comparison is refused without
+acknowledgment. The last two need an explicit
 acknowledgment: the REST call returns 409 `umin_identity_unconfirmed` with
 the reasons, the UI asks the administrator to confirm, and the acknowledgment
 and verdict are stored in the comparison result and shown above it.

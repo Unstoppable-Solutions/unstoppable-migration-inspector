@@ -82,7 +82,18 @@ final class Identity_Check {
 		$reasons = array();
 
 		if ( true === $signals['key_match'] ) {
-			$verdict = self::SAME_SITE;
+			// A matching key proves the database was copied from the
+			// snapshot's site at some point, not that the two still hold the
+			// same records: an old staging copy, or a site built from a cloned
+			// template, shares the key but has diverged. The ID sample decides.
+			if ( null !== $overlap && $overlap < 0.5 ) {
+				$verdict   = self::UNVERIFIED;
+				$reasons[] = __( 'The site key matches, so this database was copied from the snapshot\'s site at some point, but most sampled records are not here. The sites may have drifted apart (for example an old staging copy, or a site built from a cloned template).', 'unstoppable-migration-inspector' );
+			} elseif ( null !== $overlap && $overlap < 0.9 ) {
+				$verdict = self::LIKELY_SAME;
+			} else {
+				$verdict = self::SAME_SITE;
+			}
 		} else {
 			$other = (bool) $signals['name_match'] || (bool) $signals['domain_match'] || (bool) $signals['prefix_match'];
 
@@ -113,7 +124,18 @@ final class Identity_Check {
 			$reasons[] = __( 'The snapshot has no posts, pages, media, products, users or orders to sample, so the site could not be matched by record IDs.', 'unstoppable-migration-inspector' );
 		}
 
-		if ( self::SAME_SITE !== $verdict && ! $signals['name_match'] && ! $signals['domain_match'] ) {
+		if ( true === $signals['key_match'] ) {
+			// Informational: expected after a move, but never hidden.
+			if ( ! $signals['domain_match'] ) {
+				$reasons[] = __( 'The site address is different from the snapshot (expected after a move to a new domain or a staging copy).', 'unstoppable-migration-inspector' );
+			}
+			if ( ! $signals['prefix_match'] ) {
+				$reasons[] = __( 'The database table prefix is different from the snapshot (common with staging copies and some migration tools).', 'unstoppable-migration-inspector' );
+			}
+			if ( ! $signals['name_match'] ) {
+				$reasons[] = __( 'The site name is different from the snapshot.', 'unstoppable-migration-inspector' );
+			}
+		} elseif ( ! $signals['name_match'] && ! $signals['domain_match'] ) {
 			$reasons[] = __( 'The site name and address are both different from the snapshot.', 'unstoppable-migration-inspector' );
 		}
 

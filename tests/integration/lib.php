@@ -91,8 +91,8 @@ function umin_t_capture( $label, $budget = 0.5 ) {
 	return $started['snapshot_id'];
 }
 
-function umin_t_compare( $snapshot_id, $budget = 0.5 ) {
-	$started = Snapshot_Service::start_compare( $snapshot_id );
+function umin_t_compare( $snapshot_id, $budget = 0.5, $acknowledged = false ) {
+	$started = Snapshot_Service::start_compare( $snapshot_id, $acknowledged );
 	if ( is_wp_error( $started ) ) {
 		umin_t_check( 'start compare', false, $started->get_error_message() );
 		return 0;
