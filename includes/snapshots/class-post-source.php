@@ -17,10 +17,14 @@ defined( 'ABSPATH' ) || exit;
  * never selected into PHP: the digest is computed by the database.
  *
  * Why 16 bits: enough to notice that content changed without a change in
- * length (a 1 in 65,536 chance of missing a change), but far too few to
- * confirm a guess at private content, because for any guess tens of
- * thousands of other texts give the same digest. The salt is random per
- * snapshot, so digests cannot be matched across snapshots or sites.
+ * length (a 1 in 65,536 chance of missing a change) while revealing as
+ * little as possible. The salt is random per snapshot, so digests cannot be
+ * matched across snapshots. It is NOT secret from anyone holding an export:
+ * the salt travels in the file so the destination can compute the same
+ * digest. With the file, a guess at a post's content can be tested, and for
+ * short, predictable content (a PIN, a short code) together with the stored
+ * length that can be enough to recover it. Exports can therefore be made
+ * without digests (see Snapshot_Transfer::export()).
  */
 class Post_Source extends Record_Source {
 

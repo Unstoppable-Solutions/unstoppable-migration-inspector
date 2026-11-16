@@ -63,15 +63,28 @@ final class Snapshot_Transfer {
 	/**
 	 * Stream a complete snapshot as JSON through a writer callback.
 	 *
-	 * @param int      $snapshot_id Snapshot ID.
-	 * @param callable $write       Receives each piece of the document.
+	 * With $include_digests false, the post content digests are zeroed and
+	 * the salt left out, so the file carries nothing derived from content.
+	 * Chunk and overall checksums are recomputed for the reduced file.
+	 *
+	 * @param int      $snapshot_id     Snapshot ID.
+	 * @param callable $write           Receives each piece of the document.
+	 * @param bool     $include_digests Keep the content digests and their salt.
 	 * @return bool False when the snapshot is missing or not complete.
 	 */
-	public function export( $snapshot_id, callable $write ) {
+	public function export( $snapshot_id, callable $write, $include_digests = true ) {
 		$snapshot = $this->snapshots->get( $snapshot_id );
 
 		if ( null === $snapshot || Snapshot_Repository::STATUS_COMPLETE !== $snapshot['status'] ) {
 			return false;
+		}
+
+		$header   = $snapshot['header'];
+		$checksum = (string) $snapshot['checksum'];
+
+		if ( ! $include_digests ) {
+			$header['content_salt'] = '';
+			$checksum               = $this->checksum_without_digests( $snapshot_id, $header );
 		}
 
 		$opening = array(
@@ -81,8 +94,8 @@ final class Snapshot_Transfer {
 			'plugin_version' => UMIN_VERSION,
 			'snapshot'       => array(
 				'label'    => (string) $snapshot['label'],
-				'checksum' => (string) $snapshot['checksum'],
-				'header'   => Snapshot_Repository::canonical_header( $snapshot['header'] ),
+				'checksum' => $checksum,
+				'header'   => Snapshot_Repository::canonical_header( $header ),
 			),
 		);
 
@@ -98,6 +111,10 @@ final class Snapshot_Transfer {
 			$page_size = count( $page );
 
 			foreach ( $page as $row ) {
+				if ( ! $include_digests ) {
+					$row = self::without_digest( $row );
+				}
+
 				$piece = wp_json_encode(
 					array(
 						'type'     => (string) $row['record_type'],
@@ -120,6 +137,63 @@ final class Snapshot_Transfer {
 		call_user_func( $write, ']}' );
 
 		return true;
+	}
+
+	/**
+	 * Overall checksum of the snapshot as it will be exported without digests.
+	 *
+	 * @param int                  $snapshot_id Snapshot ID.
+	 * @param array<string, mixed> $header      Header with the salt removed.
+	 * @return string
+	 */
+	private function checksum_without_digests( $snapshot_id, array $header ) {
+		$chunks = array();
+		$after  = 0;
+
+		do {
+			$page      = $this->snapshots->chunks_after( $snapshot_id, $after, self::EXPORT_PAGE );
+			$page_size = count( $page );
+
+			foreach ( $page as $row ) {
+				$after    = (int) $row['id'];
+				$row      = self::without_digest( $row );
+				$chunks[] = array(
+					'record_type' => (string) $row['record_type'],
+					'seq'         => (int) $row['seq'],
+					'first_id'    => (int) $row['first_id'],
+					'last_id'     => (int) $row['last_id'],
+					'row_count'   => (int) $row['row_count'],
+					'sha256'      => (string) $row['sha256'],
+				);
+			}
+		} while ( self::EXPORT_PAGE === $page_size );
+
+		return Snapshot_Repository::checksum( $header, $chunks );
+	}
+
+	/**
+	 * A chunk row with its post content digests set to zero.
+	 *
+	 * Rows of other record types are returned unchanged.
+	 *
+	 * @param array<string, mixed> $row Chunk row with payload.
+	 * @return array<string, mixed>
+	 */
+	private static function without_digest( array $row ) {
+		if ( 0 !== strpos( (string) $row['record_type'], 'post:' ) ) {
+			return $row;
+		}
+
+		$kinds   = ( new Post_Source( 'post:post', 'post' ) )->kinds();
+		$decoded = Chunk_Codec::decode( (string) $row['payload'], (int) $row['row_count'], (string) $row['sha256'], $kinds );
+
+		$decoded['fields']['digest'] = array_fill( 0, count( $decoded['ids'] ), 0 );
+
+		$chunk          = Chunk_Codec::encode( $decoded['ids'], $decoded['fields'], $kinds );
+		$row['payload'] = $chunk['payload'];
+		$row['sha256']  = $chunk['sha256'];
+
+		return $row;
 	}
 
 	/**

@@ -43,15 +43,17 @@ final class Snapshot_Downloads {
 	/**
 	 * Export URL for a snapshot.
 	 *
-	 * @param int $snapshot_id Snapshot ID.
+	 * @param int  $snapshot_id     Snapshot ID.
+	 * @param bool $include_digests Include the content fingerprints.
 	 * @return string
 	 */
-	public static function export_url( $snapshot_id ) {
+	public static function export_url( $snapshot_id, $include_digests = true ) {
 		return wp_nonce_url(
 			add_query_arg(
 				array(
-					'action' => self::EXPORT_ACTION,
-					'id'     => (int) $snapshot_id,
+					'action'  => self::EXPORT_ACTION,
+					'id'      => (int) $snapshot_id,
+					'digests' => $include_digests ? 1 : 0,
 				),
 				admin_url( 'admin-post.php' )
 			),
@@ -101,6 +103,7 @@ final class Snapshot_Downloads {
 
 		$id = isset( $_GET['id'] ) ? absint( wp_unslash( $_GET['id'] ) ) : 0;
 		check_admin_referer( self::EXPORT_ACTION . '_' . $id );
+		$include_digests = ! isset( $_GET['digests'] ) || '0' !== sanitize_key( wp_unslash( $_GET['digests'] ) );
 
 		$snapshots = new Snapshot_Repository();
 		$snapshot  = $snapshots->get( $id );
@@ -123,7 +126,8 @@ final class Snapshot_Downloads {
 			static function ( $piece ) {
 				// JSON download, not HTML: every value inside was encoded by wp_json_encode().
 				echo $piece; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON file body built with wp_json_encode().
-			}
+			},
+			$include_digests
 		);
 
 		exit;

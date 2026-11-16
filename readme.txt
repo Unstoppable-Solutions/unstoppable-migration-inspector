@@ -19,7 +19,7 @@ You moved your WordPress site to a new host, server or domain. Did everything ar
 = Included in this build =
 
 * A Migration Health dashboard that shows each inspection category as Passed, Warning, Critical, Not Tested or Not Applicable. The plugin never calls a site healthy just because some checks passed.
-* **Migration snapshots.** Before you move a site, take a snapshot. After the move, compare it with the new site. The comparison lists the exact IDs of posts, pages, media, users, comments, terms and WooCommerce orders from the snapshot that cannot be found on the new site, separately from records that changed (including content changes that keep the same size) and records created after the snapshot. Snapshots can be exported as a file and imported on the new site. They contain IDs, statuses, dates, sizes and settings only, never names, email addresses, content or order details.
+* **Migration snapshots.** Before you move a site, take a snapshot. After the move, compare it with the new site. The comparison lists the exact IDs of posts, pages, media, users, comments, terms and WooCommerce orders from the snapshot that cannot be found on the new site, separately from records that changed (including content changes that keep the same size) and records created after the snapshot. Snapshots can be exported as a file and imported on the new site. They contain IDs, statuses, dates, sizes, a short content fingerprint per post and settings, never names, email addresses, content or order details.
 * WooCommerce orders are compared whether the store uses High-Performance Order Storage (HPOS) or the older posts storage, including after a switch between the two.
 * Settings for the old domains your site used, scan speed limits for shared hosting, and data retention.
 * Your data stays yours: deleting the plugin keeps its snapshots and scan history unless you choose to remove them.
@@ -64,11 +64,15 @@ No. A snapshot records which records existed and a few facts about each (status,
 
 = Does a snapshot contain customer data? =
 
-No. It stores record IDs, status names, dates, content sizes in bytes, user roles and site settings such as the theme and plugin list. It never stores names, email addresses, logins, post or page content, order totals, addresses or payment details.
+No. It stores record IDs, status names, dates, content sizes in bytes, a short content fingerprint per post (see the next question), user roles and site settings such as the theme and plugin list. It never stores names, email addresses, logins, post or page content, order totals, addresses or payment details.
 
 = Can a snapshot find missing WooCommerce orders? =
 
 It finds orders whose IDs existed in the snapshot but cannot be found on the new site, as long as the snapshot was taken on the old site before the move. It works with HPOS and with the older posts storage. Orders placed after the snapshot are listed separately. An order that is "not found" is not automatically a lost order: it may have been deleted on purpose after the snapshot. Check each one against the old site or a backup before treating it as lost.
+
+= Can a snapshot file reveal my content? =
+
+It does not contain your content, but each post has a short content fingerprint so that edits keeping the same size can be detected. The file includes what is needed to check those fingerprints, so anyone holding it could test a guess at a post's content, and very short, predictable content (a PIN or short code in a private post, for example) could be worked out together with the stored size. Treat exported snapshot files as confidential. If you prefer, use "Export Without Content Fingerprints": the comparison then still detects missing records and size changes, but not edits that keep the same size.
 
 = What if I compare a snapshot from a different site? =
 
@@ -88,7 +92,7 @@ This plugin does not connect to any external service and sends no data off your 
 
 == Privacy ==
 
-The plugin stores its settings in one WordPress option (`umin_settings`) and creates its own database tables for snapshots, comparisons, job progress, scan history and findings. Snapshots contain record IDs, status names, dates, content sizes, user roles and site settings, never names, email addresses, content or order details. It does not collect personal data about visitors or customers. Plugin data is kept when the plugin is deleted, unless you switch on complete removal in the settings.
+The plugin stores its settings in one WordPress option (`umin_settings`) and creates its own database tables for snapshots, comparisons, job progress, scan history and findings. Snapshots contain record IDs, status names, dates, content sizes, a short salted content fingerprint per post, user roles and site settings, never names, email addresses, content or order details. Exported snapshot files should be treated as confidential (see the FAQ). It does not collect personal data about visitors or customers. Plugin data is kept when the plugin is deleted, unless you switch on complete removal in the settings.
 
 == Changelog ==
 

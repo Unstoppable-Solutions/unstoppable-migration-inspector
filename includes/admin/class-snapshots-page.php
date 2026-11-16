@@ -88,6 +88,7 @@ final class Snapshots_Page {
 		<div class="umin-panel umin-snapshot-actions">
 			<h2><?php esc_html_e( 'Take a snapshot of this site', 'unstoppable-migration-inspector' ); ?></h2>
 			<p><?php esc_html_e( 'Snapshots store record IDs, statuses, dates, content sizes and settings. They never contain names, email addresses, post content, order details or payment information.', 'unstoppable-migration-inspector' ); ?></p>
+			<p class="description"><?php esc_html_e( 'Each post also gets a short content fingerprint, so edits that keep the same size are noticed. An exported file includes what is needed to check those fingerprints, so someone holding the file could test a guess at a post\'s content, and very short, predictable content (such as a PIN in a private post) could be worked out. Treat exported files as confidential, or use "Export Without Content Fingerprints".', 'unstoppable-migration-inspector' ); ?></p>
 			<p class="description"><?php esc_html_e( 'For the most accurate result, take the snapshot right before the move, when no new orders or posts are being created. Large sites are processed in small steps; keep this page open until it finishes. If you close it, the snapshot pauses and can be resumed.', 'unstoppable-migration-inspector' ); ?></p>
 			<p class="umin-inline-form">
 				<label for="umin-snapshot-label"><?php esc_html_e( 'Label (optional)', 'unstoppable-migration-inspector' ); ?></label>
@@ -180,6 +181,7 @@ final class Snapshots_Page {
 				<?php if ( Snapshot_Repository::STATUS_COMPLETE === $row['status'] ) : ?>
 					<button type="button" class="button button-primary" data-umin-action="compare" data-umin-snapshot="<?php echo esc_attr( (string) $row['id'] ); ?>"><?php esc_html_e( 'Compare with This Site', 'unstoppable-migration-inspector' ); ?></button>
 					<a class="button" href="<?php echo esc_url( Snapshot_Downloads::export_url( $row['id'] ) ); ?>"><?php esc_html_e( 'Export', 'unstoppable-migration-inspector' ); ?></a>
+					<a class="button" href="<?php echo esc_url( Snapshot_Downloads::export_url( $row['id'], false ) ); ?>"><?php esc_html_e( 'Export Without Content Fingerprints', 'unstoppable-migration-inspector' ); ?></a>
 				<?php elseif ( $status['resumable'] ) : ?>
 					<button type="button" class="button" data-umin-action="resume" data-umin-job="<?php echo esc_attr( (string) $job['id'] ); ?>"><?php esc_html_e( 'Resume', 'unstoppable-migration-inspector' ); ?></button>
 				<?php endif; ?>
@@ -505,7 +507,10 @@ final class Snapshots_Page {
 				<strong><?php echo $confirmed ? esc_html__( 'Snapshot matched to this site.', 'unstoppable-migration-inspector' ) : esc_html__( 'Snapshot not matched to this site.', 'unstoppable-migration-inspector' ); ?></strong>
 				<?php echo esc_html( Identity_Check::describe( (string) $identity['verdict'] ) ); ?>
 			</p>
-			<?php if ( ! $confirmed && ! empty( $identity['reasons'] ) ) : ?>
+			<?php if ( ! empty( $identity['reasons'] ) ) : ?>
+				<?php if ( $confirmed ) : ?>
+					<p><?php esc_html_e( 'Differences noted:', 'unstoppable-migration-inspector' ); ?></p>
+				<?php endif; ?>
 				<ul class="ul-disc">
 					<?php foreach ( (array) $identity['reasons'] as $reason ) : ?>
 						<li><?php echo esc_html( (string) $reason ); ?></li>
@@ -809,8 +814,8 @@ final class Snapshots_Page {
 			list( $before, $after ) = array_values( $change );
 
 			if ( 'digest' === $field ) {
-				// The digest is a privacy-preserving fingerprint, not a value
-				// worth showing; only the fact that it changed matters.
+				// The digest is a short fingerprint with no meaning of its own;
+				// only the fact that it changed is shown.
 				$parts[] = isset( $detail['length'] )
 					? __( 'content changed', 'unstoppable-migration-inspector' )
 					: __( 'content changed, although its size is the same', 'unstoppable-migration-inspector' );
