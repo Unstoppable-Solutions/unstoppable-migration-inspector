@@ -24,13 +24,7 @@ final class Snapshot_Service {
 	 * @return Job_Runner
 	 */
 	public static function runner() {
-		return new Job_Runner(
-			new Job_Store(),
-			array(
-				new Capture_Handler(),
-				new Compare_Handler(),
-			)
-		);
+		return \UnstoppableSolutions\MigrationInspector\Jobs\Job_Registry::runner();
 	}
 
 	/**

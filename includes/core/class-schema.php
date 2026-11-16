@@ -28,7 +28,7 @@ final class Schema {
 	/**
 	 * Current schema version. Bump when a table definition changes.
 	 */
-	const VERSION = '3';
+	const VERSION = '4';
 
 	/**
 	 * Option that stores the installed schema version for this site.
@@ -181,6 +181,8 @@ final class Schema {
 				scan_id bigint(20) unsigned NOT NULL,
 				category varchar(40) NOT NULL,
 				check_key varchar(80) NOT NULL,
+				kind varchar(80) NOT NULL DEFAULT '',
+				batch_key bigint(20) unsigned NOT NULL DEFAULT 0,
 				severity varchar(20) NOT NULL,
 				status varchar(20) NOT NULL DEFAULT 'open',
 				object_type varchar(40) NOT NULL DEFAULT '',
@@ -192,6 +194,7 @@ final class Schema {
 				PRIMARY KEY  (id),
 				KEY scan_id (scan_id),
 				KEY scan_category (scan_id,category),
+				KEY scan_check (scan_id,check_key,batch_key),
 				KEY severity (severity)
 			) {$charset_collate};",
 		);

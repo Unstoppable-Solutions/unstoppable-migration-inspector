@@ -212,7 +212,7 @@ class Snapshots_Controller extends REST_Controller {
 		$store = new Job_Store();
 		$job   = $store->get( $id );
 
-		if ( null === $job || ! in_array( $job['type'], Snapshot_Service::job_types(), true ) ) {
+		if ( null === $job || ! in_array( $job['type'], \UnstoppableSolutions\MigrationInspector\Jobs\Job_Registry::types(), true ) ) {
 			return new \WP_Error( 'umin_not_found', __( 'Job not found.', 'unstoppable-migration-inspector' ), array( 'status' => 404 ) );
 		}
 
