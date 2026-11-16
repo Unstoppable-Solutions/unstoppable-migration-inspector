@@ -20,6 +20,9 @@
 #
 # Optional: WP_DIR (default /tmp/umin-smoke-wp), PORT (default 8089),
 #           MULTISITE=1 to also run the multisite checks.
+#           DB=mysql to use MySQL/MariaDB instead of SQLite. The database
+#           DB_NAME (default umin_smoke) is DROPPED and recreated, so point it
+#           at a throwaway database. Also DB_USER, DB_PASSWORD, DB_HOST.
 
 set -uo pipefail
 
@@ -72,12 +75,19 @@ build_zip() {
 setup_wordpress() {
 	rm -rf "${WP_DIR}" && mkdir -p "${WP_DIR}"
 	tar -xzf "${DL_DIR}/wordpress.tar.gz" -C "${WP_DIR}" --strip-components=1
-	unzip -q "${DL_DIR}/sqlite.zip" -d "${WP_DIR}/wp-content/plugins/"
-	sed -e "s#{SQLITE_IMPLEMENTATION_FOLDER_PATH}#${WP_DIR}/wp-content/plugins/sqlite-database-integration#" \
-		-e "s#{SQLITE_PLUGIN}#sqlite-database-integration/load.php#" \
-		"${WP_DIR}/wp-content/plugins/sqlite-database-integration/db.copy" > "${WP_DIR}/wp-content/db.php"
 
-	wp config create --dbname=wp --dbuser=wp --dbpass=wp --skip-check >/dev/null
+	if [ "${DB:-sqlite}" = "mysql" ]; then
+		local name="${DB_NAME:-umin_smoke}" user="${DB_USER:-umin}" pass="${DB_PASSWORD:-umin}" host="${DB_HOST:-localhost}"
+		wp config create --dbname="${name}" --dbuser="${user}" --dbpass="${pass}" --dbhost="${host}" --skip-check >/dev/null
+		wp db reset --yes >/dev/null
+	else
+		unzip -q "${DL_DIR}/sqlite.zip" -d "${WP_DIR}/wp-content/plugins/"
+		sed -e "s#{SQLITE_IMPLEMENTATION_FOLDER_PATH}#${WP_DIR}/wp-content/plugins/sqlite-database-integration#" \
+			-e "s#{SQLITE_PLUGIN}#sqlite-database-integration/load.php#" \
+			"${WP_DIR}/wp-content/plugins/sqlite-database-integration/db.copy" > "${WP_DIR}/wp-content/db.php"
+		wp config create --dbname=wp --dbuser=wp --dbpass=wp --skip-check >/dev/null
+	fi
+
 	wp config set WP_DEBUG true --raw >/dev/null
 	wp config set WP_DEBUG_LOG true --raw >/dev/null
 	wp config set WP_DEBUG_DISPLAY false --raw >/dev/null
@@ -85,7 +95,7 @@ setup_wordpress() {
 		--admin_email=admin@example.test --skip-email >/dev/null
 	wp user create subscriber sub@example.test --role=subscriber --user_pass=sub >/dev/null
 	rm -f "${WP_DIR}/wp-content/debug.log"
-	echo "WordPress $(wp core version) installed at ${WP_DIR}"
+	echo "WordPress $(wp core version) installed at ${WP_DIR} (database: ${DB:-sqlite}$( [ "${DB:-sqlite}" = mysql ] && printf ', %s' "$(wp db query 'SELECT VERSION()' --skip-column-names 2>/dev/null)"))"
 }
 
 start_server() {
