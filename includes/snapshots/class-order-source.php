@@ -96,7 +96,7 @@ class Order_Source extends Record_Source {
 			$rows = $wpdb->get_results(
 				$wpdb->prepare(
 					'SELECT id, status, date_updated_gmt AS modified, date_created_gmt AS created
-					FROM %i
+					FROM %i USE INDEX (PRIMARY)
 					WHERE type = %s AND id > %d AND id <= %d
 					ORDER BY id ASC
 					LIMIT %d',
@@ -113,7 +113,7 @@ class Order_Source extends Record_Source {
 			$rows = $wpdb->get_results(
 				$wpdb->prepare(
 					"SELECT ID AS id, post_status AS status, post_modified_gmt AS modified, post_date_gmt AS created
-					FROM {$wpdb->posts}
+					FROM {$wpdb->posts} USE INDEX (PRIMARY)
 					WHERE post_type = %s AND ID > %d AND ID <= %d
 					ORDER BY ID ASC
 					LIMIT %d",

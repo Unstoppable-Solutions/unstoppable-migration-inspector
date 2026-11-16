@@ -85,12 +85,14 @@ class Post_Source extends Record_Source {
 	public function fetch_after( $after_id, $limit, $max_id = 0 ) {
 		global $wpdb;
 
+		// USE INDEX (PRIMARY): MariaDB otherwise picks type_status_author and sorts
+		// most of the post type on every batch (measured 10x slower on 200k posts).
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Read-only keyset scan; caching would defeat the snapshot.
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT ID, post_status, post_modified_gmt, post_date_gmt, LENGTH(post_content) AS content_length,
 					LEFT(MD5(CONCAT(%s, post_content)), 4) AS content_digest
-				FROM {$wpdb->posts}
+				FROM {$wpdb->posts} USE INDEX (PRIMARY)
 				WHERE post_type = %s AND post_status <> %s AND ID > %d AND ID <= %d
 				ORDER BY ID ASC
 				LIMIT %d",
