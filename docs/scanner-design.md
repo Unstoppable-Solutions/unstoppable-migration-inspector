@@ -163,3 +163,18 @@ See the Phase 2b PR for the results that were run.
   - a subscriber cannot open the results
   - Plugin Check clean
 - **Manual:** `docs/manual-testing-wpvivid.md`.
+
+### 7.1 Test matrix actually run (16 Nov 2026, commit `13be301`)
+
+| PHP | Database | Unit (124) | Smoke (121, incl. multisite and Plugin Check) | Integration (401) | Large (13) |
+|---|---|---|---|---|---|
+| 8.3 | SQLite | pass | pass | pass | n/a (needs MySQL) |
+| 8.3 | MariaDB 10.11.14 | — | pass | pass | pass |
+| 8.3 | MySQL 8.4.13 | — | pass ¹ | pass | pass |
+| 7.4.33 | MySQL 8.4.13 | pass (and lint) | pass | pass | not run |
+
+¹ The first MySQL smoke run failed one check: WordPress core logged a warning that it could not reach WordPress.org for update checks. That is the test environment's network, not the plugin. A rerun passed 121 of 121.
+
+Large-site scan (200,000 posts, 20,000 orders, `memory_limit=128M`): 2.7 s on MariaDB and 2.5 s on MySQL 8.4. The most extra memory any scan step needed was 0.68 MB, and all 49 surviving planted old-domain posts were reported. PHPCS is clean.
+
+GitHub Actions results could not be read from the development session.
