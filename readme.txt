@@ -14,18 +14,19 @@ Checks a WordPress site after it has been moved and explains what did not transf
 
 You moved your WordPress site to a new host, server or domain. Did everything arrive? Unstoppable Migration Inspector answers that question.
 
-**This is a development build (0.1.0).** It contains the foundation: the dashboard, settings and data storage. The scanner, migration snapshots, repair tools and reports are being built in stages and are not included yet. Nothing below the "Planned" heading works in this build.
+**This is a development build (0.1.0).** It contains the dashboard, settings and migration snapshots. The scanner, repair tools and reports are being built in stages and are not included yet. Nothing below the "Planned" heading works in this build.
 
 = Included in this build =
 
 * A Migration Health dashboard that shows each inspection category as Passed, Warning, Critical, Not Tested or Not Applicable. The plugin never calls a site healthy just because some checks passed.
+* **Migration snapshots.** Before you move a site, take a snapshot. After the move, compare it with the new site. The comparison lists the exact IDs of posts, pages, media, users, comments, terms and WooCommerce orders that are missing, separately from records that changed and records created after the snapshot. Snapshots can be exported as a file and imported on the new site. They contain IDs, statuses, dates, sizes and settings only, never names, email addresses, content or order details.
+* WooCommerce orders are compared whether the store uses High-Performance Order Storage (HPOS) or the older posts storage, including after a switch between the two.
 * Settings for the old domains your site used, scan speed limits for shared hosting, and data retention.
 * Your data stays yours: deleting the plugin keeps its snapshots and scan history unless you choose to remove them.
 
 = Planned for version 1.0 =
 
 * **Scan Website:** a read-only inspection of domains and URLs, the database, media files, HTTPS and mixed content, WordPress configuration and, when it is active, WooCommerce.
-* **Migration snapshots:** record counts and settings before you move, then compare after the move to find posts, media, orders and other records that did not arrive.
 * **Repair Center:** a plain explanation of each problem, why it matters and how to fix it. Where a fix can be done safely, such as a carefully limited database replacement, the plugin offers it with a preview, confirmation and an undo log.
 * **Reports:** downloadable CSV, JSON and printable reports.
 
@@ -56,6 +57,18 @@ No. The plugin does not contact any outside service and does not collect usage s
 = Who can use it? =
 
 Administrators. On multisite, only super admins will be able to run anything that changes the database. A site owner can switch off all database changes by adding `define( 'UMIN_DISABLE_WRITES', true );` to wp-config.php.
+
+= Is a snapshot a backup? =
+
+No. A snapshot records which records existed and a few facts about each (status, dates, size), not their content. It can tell you exactly what is missing after a move, but it cannot restore it. Keep a real backup of the old site until you have checked the new one.
+
+= Does a snapshot contain customer data? =
+
+No. It stores record IDs, status names, dates, content sizes in bytes, user roles and site settings such as the theme and plugin list. It never stores names, email addresses, logins, post or page content, order totals, addresses or payment details.
+
+= Can a snapshot find missing WooCommerce orders? =
+
+Yes, by order ID, as long as the snapshot was taken on the old site before the move. It works with HPOS and with the older posts storage. Orders placed after the snapshot are listed separately as created after the snapshot.
 
 = Does it replace my backup or migration plugin? =
 
