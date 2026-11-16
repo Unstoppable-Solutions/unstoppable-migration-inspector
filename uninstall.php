@@ -41,7 +41,16 @@ function umin_uninstall_current_site() {
 		return;
 	}
 
-	$tables = array( 'umin_snapshots', 'umin_scans', 'umin_findings' );
+	// Keep in sync with Schema::TABLES.
+	$tables = array(
+		'umin_snapshots',
+		'umin_snapshot_chunks',
+		'umin_comparisons',
+		'umin_comparison_items',
+		'umin_jobs',
+		'umin_scans',
+		'umin_findings',
+	);
 
 	foreach ( $tables as $table ) {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange -- Removing the plugin's own tables on uninstall; names are fixed, not input.

@@ -13,16 +13,21 @@ defined( 'ABSPATH' ) || exit;
  * Creates and upgrades the plugin's tables.
  *
  * All tables use the current site's prefix, so on multisite each site keeps
- * its own snapshots and scan history. Tables for replacement jobs and the
- * undo log are added in a later schema version, together with the code that
- * uses them, rather than created empty in advance.
+ * its own snapshots and scan history. The undo log for replacements is added
+ * in a later schema version, together with the code that uses it, rather
+ * than created empty in advance.
+ *
+ * Version history:
+ * 1  snapshots, scans, findings.
+ * 2  snapshot status column; snapshot chunks, jobs, comparisons and
+ *    comparison items (Phase 2a).
  */
 final class Schema {
 
 	/**
 	 * Current schema version. Bump when a table definition changes.
 	 */
-	const VERSION = '1';
+	const VERSION = '2';
 
 	/**
 	 * Option that stores the installed schema version for this site.
@@ -36,6 +41,10 @@ final class Schema {
 	 */
 	const TABLES = array(
 		'umin_snapshots',
+		'umin_snapshot_chunks',
+		'umin_comparisons',
+		'umin_comparison_items',
+		'umin_jobs',
 		'umin_scans',
 		'umin_findings',
 	);
@@ -73,6 +82,10 @@ final class Schema {
 
 		$charset_collate = $wpdb->get_charset_collate();
 		$snapshots       = self::table( 'umin_snapshots' );
+		$chunks          = self::table( 'umin_snapshot_chunks' );
+		$comparisons     = self::table( 'umin_comparisons' );
+		$items           = self::table( 'umin_comparison_items' );
+		$jobs            = self::table( 'umin_jobs' );
 		$scans           = self::table( 'umin_scans' );
 		$findings        = self::table( 'umin_findings' );
 
@@ -81,6 +94,7 @@ final class Schema {
 		$sql = array(
 			"CREATE TABLE {$snapshots} (
 				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				status varchar(20) NOT NULL DEFAULT 'capturing',
 				created_at datetime NOT NULL,
 				created_by bigint(20) unsigned NOT NULL DEFAULT 0,
 				label varchar(190) NOT NULL DEFAULT '',
@@ -92,6 +106,60 @@ final class Schema {
 				checksum char(64) NOT NULL DEFAULT '',
 				PRIMARY KEY  (id),
 				KEY created_at (created_at)
+			) {$charset_collate};",
+			"CREATE TABLE {$chunks} (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				snapshot_id bigint(20) unsigned NOT NULL,
+				record_type varchar(64) NOT NULL,
+				seq int(10) unsigned NOT NULL,
+				first_id bigint(20) unsigned NOT NULL,
+				last_id bigint(20) unsigned NOT NULL,
+				row_count int(10) unsigned NOT NULL,
+				sha256 char(64) NOT NULL,
+				payload longtext NOT NULL,
+				PRIMARY KEY  (id),
+				UNIQUE KEY snapshot_type_seq (snapshot_id,record_type,seq),
+				KEY snapshot_type_first (snapshot_id,record_type,first_id)
+			) {$charset_collate};",
+			"CREATE TABLE {$comparisons} (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				snapshot_id bigint(20) unsigned NOT NULL,
+				job_id bigint(20) unsigned NOT NULL DEFAULT 0,
+				status varchar(20) NOT NULL DEFAULT 'running',
+				created_at datetime NOT NULL,
+				finished_at datetime DEFAULT NULL,
+				created_by bigint(20) unsigned NOT NULL DEFAULT 0,
+				summary longtext NOT NULL,
+				PRIMARY KEY  (id),
+				KEY snapshot_id (snapshot_id)
+			) {$charset_collate};",
+			"CREATE TABLE {$items} (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				comparison_id bigint(20) unsigned NOT NULL,
+				record_type varchar(64) NOT NULL,
+				record_id bigint(20) unsigned NOT NULL,
+				kind varchar(16) NOT NULL,
+				detail text NOT NULL,
+				PRIMARY KEY  (id),
+				KEY comparison_type_kind (comparison_id,record_type,kind,record_id),
+				KEY comparison_type_record (comparison_id,record_type,record_id)
+			) {$charset_collate};",
+			"CREATE TABLE {$jobs} (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				type varchar(40) NOT NULL,
+				status varchar(20) NOT NULL DEFAULT 'pending',
+				created_by bigint(20) unsigned NOT NULL DEFAULT 0,
+				created_at datetime NOT NULL,
+				updated_at datetime NOT NULL,
+				params longtext NOT NULL,
+				state longtext NOT NULL,
+				progress text NOT NULL,
+				lease_token varchar(64) NOT NULL DEFAULT '',
+				lease_expires bigint(20) unsigned NOT NULL DEFAULT 0,
+				steps int(10) unsigned NOT NULL DEFAULT 0,
+				error text NOT NULL,
+				PRIMARY KEY  (id),
+				KEY type_status (type,status)
 			) {$charset_collate};",
 			"CREATE TABLE {$scans} (
 				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
