@@ -326,11 +326,14 @@ These are deliberately separate.
       exactly. A checksum alone could only say "something in this block is
       gone", which is not enough.
   - **ID list encoding** (efficient and privacy-conscious):
-    - IDs are sorted and stored as ranges: `[[1, 4210], [4213, 9001], …]`.
-      WordPress IDs are mostly sequential, so a site with 50,000 posts
-      typically needs a few hundred ranges.
-    - Long gap-heavy lists are delta-encoded and gzip-compressed (base64 in
-      the JSON file). The format is versioned.
+    - IDs are stored in chunks of up to 5,000 records. Each chunk is
+      columnar: delta-encoded IDs plus a few small numeric fields per
+      record, gzip-compressed (base64 in the JSON file). Sequential IDs cost
+      about one byte each. The format is versioned. See
+      `snapshot-design.md` §2.
+    - The small per-record fields (status, modified time, content length,
+      role) let the comparison separate *changed* records from *missing*
+      ones and from records *created after* the snapshot.
     - Each list carries its count and a SHA-256 of the canonical list, so
       corruption is detected.
     - Only integer IDs are stored: no titles, slugs, emails, names,
@@ -426,7 +429,7 @@ These are deliberately separate.
 | Phase | Milestone | Done when |
 |---|---|---|
 | **1. Foundation** (this branch) | Plugin skeleton, secure admin shell, settings, schema, REST base, standards tooling, dashboard with all categories Not Tested | Activates cleanly on WordPress 7.1 with `WP_DEBUG`; PHPCS and Plugin Check clean; settings survive tab saves and reactivation |
-| **2a. Migration snapshot** | Capture (batched), store, export/import, compare; WooCommerce HPOS and legacy order storage; range-encoded ID lists | See the snapshot and WooCommerce tests in §6a |
+| **2a. Migration snapshot** | Capture (batched), store, export/import, compare; WooCommerce HPOS and legacy order storage; compact ID lists. Detailed design: [`snapshot-design.md`](snapshot-design.md) | See the snapshot and WooCommerce tests in §6a and design §6 |
 | **2b. Read-only scanner** | Scan manager with batched REST runs; URL, database, media, mixed-content, configuration and WooCommerce checks; results screen; Scan Website flow on the dashboard | Each check has fixtures and tests; a scan of a seeded "migrated" site finds the planted issues and changes no data |
 | **3. Search & Replace** | Table inventory, transformer, job runner (§3.5), undo log with conflict detection (§3.6), UI with safety steps, offered from findings | All Section 15 tests plus the job, serialization and undo tests in §6a pass |
 | **4. Reports & verification** | Repair Center, report builder, exports, history, rescan | Reports contain no secrets (automated check); retention works |
