@@ -322,4 +322,26 @@ final class ComparatorTest extends Test_Case {
 		$this->assertArrayNotHasKey( 'permalink_structure', $keyed );
 		$this->assertArrayNotHasKey( 'plugin:unstoppable-migration-inspector/unstoppable-migration-inspector.php', $keyed, 'The inspector itself is not reported as a new plugin.' );
 	}
+
+	public function test_prefix_change_severity_depends_on_whether_roles_moved() {
+		$before = array( 'table_prefix' => 'wpf0_' );
+		$after  = array( 'table_prefix' => 'stg_' );
+
+		$moved   = Config_Diff::compare( $before, $after, true );
+		$broken  = Config_Diff::compare( $before, $after, false );
+		$unknown = Config_Diff::compare( $before, $after );
+
+		$this->assertSame( 'info', $moved[0]['severity'] );
+		$this->assertSame( 'warning', $broken[0]['severity'] );
+		$this->assertSame( 'info', $unknown[0]['severity'] );
+	}
+
+	public function test_backup_and_staging_tool_tables_are_recognised() {
+		foreach ( array( 'wpf0_wpvivid_options', 'wp_wpstg_queue', 'wp_duplicator_packages', 'wp_ai1wm_x', 'wp_updraft_jobs' ) as $table ) {
+			$this->assertTrue( \UnstoppableSolutions\MigrationInspector\Snapshots\Compare_Handler::is_tool_table( $table ), $table );
+		}
+		foreach ( array( 'wp_posts', 'wp_wc_orders', 'wp_woocommerce_order_items' ) as $table ) {
+			$this->assertFalse( \UnstoppableSolutions\MigrationInspector\Snapshots\Compare_Handler::is_tool_table( $table ), $table );
+		}
+	}
 }

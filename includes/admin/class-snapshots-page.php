@@ -9,6 +9,7 @@ namespace UnstoppableSolutions\MigrationInspector\Admin;
 
 use UnstoppableSolutions\MigrationInspector\Core\Capabilities;
 use UnstoppableSolutions\MigrationInspector\Jobs\Job_Store;
+use UnstoppableSolutions\MigrationInspector\Snapshots\Compare_Handler;
 use UnstoppableSolutions\MigrationInspector\Snapshots\Comparator;
 use UnstoppableSolutions\MigrationInspector\Snapshots\Comparison_Repository;
 use UnstoppableSolutions\MigrationInspector\Snapshots\Identity_Check;
@@ -637,14 +638,28 @@ final class Snapshots_Page {
 			<tbody>
 				<?php foreach ( $problems as $name => $table ) : ?>
 					<tr>
-						<th scope="row"><code><?php echo esc_html( (string) $name ); ?></code></th>
+						<th scope="row">
+							<code><?php echo esc_html( (string) $name ); ?></code>
+							<?php if ( ! empty( $table['site_table'] ) && $table['site_table'] !== $name ) : ?>
+								<br /><span class="description">
+									<?php
+									/* translators: %s: table name on this site. */
+									printf( esc_html__( 'compared with %s', 'unstoppable-migration-inspector' ), '<code>' . esc_html( (string) $table['site_table'] ) . '</code>' );
+									?>
+								</span>
+							<?php endif; ?>
+						</th>
 						<td class="num"><?php echo esc_html( number_format_i18n( (int) $table['before'] ) ); ?></td>
 						<td class="num"><?php echo 'missing' === $table['status'] ? '—' : esc_html( number_format_i18n( (int) $table['after'] ) ); ?></td>
 						<td>
 							<?php
-							echo 'missing' === $table['status']
-								? esc_html__( 'This table does not exist on this site. The plugin that uses it will have lost its data.', 'unstoppable-migration-inspector' )
-								: esc_html__( 'This table has fewer rows than before the move. Part of its data may not have been imported.', 'unstoppable-migration-inspector' );
+							if ( Compare_Handler::is_tool_table( (string) $name ) ) {
+								esc_html_e( 'This table belongs to a backup, migration or staging tool, whose records normally differ between copies. Usually no action is needed.', 'unstoppable-migration-inspector' );
+							} else {
+								echo 'missing' === $table['status']
+									? esc_html__( 'This table does not exist on this site. The plugin that uses it will have lost its data.', 'unstoppable-migration-inspector' )
+									: esc_html__( 'This table has fewer rows than before the move. Part of its data may not have been imported.', 'unstoppable-migration-inspector' );
+							}
 							echo ! empty( $table['approx'] ) ? ' ' . esc_html__( '(Row counts are estimates for very large tables.)', 'unstoppable-migration-inspector' ) : '';
 							?>
 						</td>
