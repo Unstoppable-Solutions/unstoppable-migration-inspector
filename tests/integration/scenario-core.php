@@ -65,7 +65,7 @@ fclose( $handle );
 $export = file_get_contents( $export_file );
 
 umin_t_check( 'Export is valid JSON', is_array( json_decode( $export, true ) ) );
-$markers = array( get_option( 'admin_email' ), 'private-example.test', 'tester_login', 'Quentin', 'Displayname', 'Secret Title', 'Secret Page', 'Secret Photo', 'Secret Product', 'Secret Category', 'Secret Tag', 'Confidential body', 'Zelda', 'Testcustomer', '742 Secret', '555-0100', 'Commenter Personname', '203.0.113', 'Private refund', 'secret-photo' );
+$markers = array( get_option( 'admin_email' ), get_option( 'blogname' ), 'private-example.test', 'tester_login', 'Quentin', 'Displayname', 'Secret Title', 'Secret Page', 'Secret Photo', 'Secret Product', 'Secret Category', 'Secret Tag', 'Confidential body', 'Zelda', 'Testcustomer', '742 Secret', '555-0100', 'Commenter Personname', '203.0.113', 'Private refund', 'secret-photo' );
 foreach ( $markers as $marker ) {
 	umin_t_check( "Export contains no personal or content data: '{$marker}'", false === stripos( $export, $marker ) );
 }
@@ -105,7 +105,15 @@ umin_t_same( 'Interrupted capture resumes to completion', 'completed', $resumed[
 umin_t_check( 'The crashed request\'s stale lease can no longer save state', ! $store->save_state( $job_id, $token, array(), array() ) );
 
 $clean_id = umin_t_capture( 'Uninterrupted' );
-umin_t_same( 'Interrupted and uninterrupted captures are identical chunk by chunk', umin_t_chunk_signature( $clean_id ), umin_t_chunk_signature( $started['snapshot_id'] ) );
+umin_t_same( 'Interrupted and uninterrupted captures hold identical records', umin_t_records_without_digest( $clean_id ), umin_t_records_without_digest( $started['snapshot_id'] ) );
+$non_post = function ( $signature ) {
+	return array_values( array_filter( $signature, function ( $line ) {
+		return 0 !== strpos( $line, 'post:' );
+	} ) );
+};
+umin_t_same( 'Non-post chunks are byte-identical between the two captures', $non_post( umin_t_chunk_signature( $clean_id ) ), $non_post( umin_t_chunk_signature( $started['snapshot_id'] ) ) );
+umin_t_check( 'Interrupted capture\'s content digests match the database', umin_t_digests_match_database( $started['snapshot_id'], 'post:post' ) );
+umin_t_check( 'Each snapshot uses its own content salt', umin_t_snapshot( $clean_id )['header']['content_salt'] !== umin_t_snapshot( $started['snapshot_id'] )['header']['content_salt'] );
 
 // Cancel.
 $cancel = Snapshot_Service::start_capture( 'Cancelled' );
@@ -160,8 +168,24 @@ foreach ( array_merge( $deleted_orders, $deleted_refunds ) as $id ) {
 // Changes.
 $status_post    = $core['posts'][0];
 $truncated_post = $core['posts'][1];
+$same_size_post = $core['posts'][3];
 wp_update_post( array( 'ID' => $status_post, 'post_status' => 'draft' ) );
 wp_update_post( array( 'ID' => $truncated_post, 'post_content' => 'Cut off' ) );
+// Same length, different content, and the modified date put back, so only
+// the content digest can notice the change.
+$original_content = get_post_field( 'post_content', $same_size_post, 'raw' );
+$original_modgmt  = get_post_field( 'post_modified_gmt', $same_size_post, 'raw' );
+$original_mod     = get_post_field( 'post_modified', $same_size_post, 'raw' );
+$wpdb->update(
+	$wpdb->posts,
+	array(
+		'post_content'      => strrev( $original_content ),
+		'post_modified_gmt' => $original_modgmt,
+		'post_modified'     => $original_mod,
+	),
+	array( 'ID' => $same_size_post )
+);
+clean_post_cache( $same_size_post );
 $role_user = $core['users'][0];
 ( new WP_User( $role_user ) )->set_role( 'editor' === ( new WP_User( $role_user ) )->roles[0] ? 'author' : 'editor' );
 wp_set_comment_status( $core['comments'][2], 'hold' );
@@ -209,6 +233,8 @@ $status_detail = umin_t_detail( $comparison_id, 'post:post', Comparator::CHANGED
 umin_t_same( 'Status change detail: publish to draft', array( 'publish', 'draft' ), $status_detail['status'] );
 $trunc_detail = umin_t_detail( $comparison_id, 'post:post', Comparator::CHANGED, $truncated_post );
 umin_t_check( 'Truncated content is flagged as shrunk', ! empty( $trunc_detail['shrank'] ) && $trunc_detail['length'][1] < $trunc_detail['length'][0] );
+$same_detail = umin_t_detail( $comparison_id, 'post:post', Comparator::CHANGED, $same_size_post );
+umin_t_check( 'A same-length content edit is caught by the content digest alone', is_array( $same_detail ) && isset( $same_detail['digest'] ) && ! isset( $same_detail['length'] ) && ! isset( $same_detail['modified'] ), wp_json_encode( $same_detail ) );
 umin_t_subset( 'Changed users include the role change', array( $role_user ), umin_t_ids( $comparison_id, 'user', Comparator::CHANGED ) );
 umin_t_subset( 'Changed comments include the unapproved comment', array( $core['comments'][2] ), umin_t_ids( $comparison_id, 'comment', Comparator::CHANGED ) );
 umin_t_subset( 'Changed orders include the status change', array( $status_order ), umin_t_ids( $comparison_id, 'wc_order', Comparator::CHANGED ) );
@@ -229,6 +255,9 @@ foreach ( $summary['types'] as $key => $t ) {
 }
 umin_t_same( 'Live post count matches comparison', umin_t_count_posts( 'post' ), $summary['types']['post:post']['on_site'] );
 umin_t_same( 'Order storage recorded for both sides', array( 'snapshot' => $storage['mode'], 'site' => $storage['mode'] ), $summary['order_storage'] );
+umin_t_same( 'A snapshot of this site is recognised as the same site', 'same_site', $summary['identity']['verdict'] );
+umin_t_check( 'Same-site comparisons need no acknowledgment', false === $summary['identity']['needs_ack'] );
+umin_t_check( 'Snapshot header carries a site key and a content salt, not the site name', 32 === strlen( $snapshot['header']['identity']['site_key'] ) && 16 === strlen( $snapshot['header']['content_salt'] ) && 64 === strlen( $snapshot['header']['identity']['name_hash'] ) );
 
 // ---------------------------------------------------------------------
 // Interrupted comparison gives the same totals as an uninterrupted one.

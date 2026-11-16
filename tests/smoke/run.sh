@@ -154,7 +154,7 @@ run_single_site_checks() {
 	for t in ${UMIN_TABLES}; do
 		check "Table ${t} created" "$(table_exists "${t}")" "yes"
 	done
-	check "Schema version stored" "$(wp option get umin_db_version)" "2"
+	check "Schema version stored" "$(wp option get umin_db_version)" "3"
 	contains "Data is kept on uninstall by default" "$(setting)" '"delete_data_on_uninstall":false'
 
 	echo; echo "== ZIP contents =="
@@ -248,6 +248,27 @@ run_single_site_checks() {
 	body="$(curl -s -b "${JAR_ADMIN}" -H "X-WP-Nonce: ${admin_nonce}" "${SITE}/?rest_route=/${SLUG}/v1/status")"
 	contains "Admin REST status returns overall" "${body}" '"overall":"not_tested"'
 	contains "Admin can modify on single site" "${body}" '"can_modify":true'
+
+	echo; echo "== Snapshot endpoints: permissions and nonces =="
+	code="$(curl -s -o /dev/null -w '%{http_code}' -X POST "${SITE}/?rest_route=/${SLUG}/v1/snapshots")"
+	check "Anonymous cannot start a snapshot" "${code}" "401"
+	code="$(curl -s -o /dev/null -w '%{http_code}' -X POST -b "${JAR_SUB}" -H "X-WP-Nonce: ${sub_nonce}" "${SITE}/?rest_route=/${SLUG}/v1/snapshots")"
+	check "Subscriber cannot start a snapshot" "${code}" "403"
+	code="$(curl -s -o /dev/null -w '%{http_code}' -X POST -b "${JAR_SUB}" -H "X-WP-Nonce: ${sub_nonce}" "${SITE}/?rest_route=/${SLUG}/v1/jobs/1/run")"
+	check "Subscriber cannot run jobs" "${code}" "403"
+	code="$(curl -s -o /dev/null -w '%{http_code}' -X POST -b "${JAR_ADMIN}" "${SITE}/?rest_route=/${SLUG}/v1/snapshots")"
+	check "Admin without REST nonce cannot start a snapshot" "${code}" "401"
+	code="$(curl -s -o /dev/null -w '%{http_code}' -b "${JAR_SUB}" -F "action=umin_import_snapshot" -F "_wpnonce=x" -F "umin_snapshot_file=@${REPO_DIR}/readme.txt" "${SITE}/wp-admin/admin-post.php")"
+	check "Subscriber cannot import a snapshot" "${code}" "403"
+	code="$(curl -s -o /dev/null -w '%{http_code}' -b "${JAR_ADMIN}" -F "action=umin_import_snapshot" -F "_wpnonce=forged" -F "umin_snapshot_file=@${REPO_DIR}/readme.txt" "${SITE}/wp-admin/admin-post.php")"
+	check "Admin import with a forged nonce is refused" "${code}" "403"
+	code="$(curl -s -o /dev/null -w '%{http_code}' -b "${JAR_ADMIN}" "${SITE}/wp-admin/admin-post.php?action=umin_export_snapshot&id=1&_wpnonce=forged")"
+	check "Export with a forged nonce is refused" "${code}" "403"
+	code="$(curl -s -o /dev/null -w '%{http_code}' -b "${JAR_SUB}" "${SITE}/wp-admin/admin-post.php?action=umin_comparison_csv&id=1&kind=missing&_wpnonce=x")"
+	check "Subscriber cannot download comparison CSVs" "${code}" "403"
+	body="$(curl -s -X POST -b "${JAR_ADMIN}" -H "X-WP-Nonce: ${admin_nonce}" -H 'Content-Type: application/json' -d '{"label":"<script>alert(1)</script>Smoke"}' "${SITE}/?rest_route=/${SLUG}/v1/snapshots")"
+	contains "Admin can start a snapshot" "${body}" '"job_id"'
+	lacks "Snapshot labels are stripped of markup" "$(get "${JAR_ADMIN}" "/wp-admin/admin.php?page=umin-snapshots")" "<script>alert(1)"
 
 	echo; echo "== UMIN_DISABLE_WRITES kill switch =="
 	wp config set UMIN_DISABLE_WRITES true --raw >/dev/null

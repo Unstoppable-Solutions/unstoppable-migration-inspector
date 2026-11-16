@@ -12,8 +12,15 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Tracks posts, pages, attachments, products and any other post type.
  *
- * Reads the ID, status, modified time, creation time and the byte length of
- * the content. The content itself is never selected.
+ * Reads the ID, status, modified time, creation time, the byte length of
+ * the content and a 16-bit salted content digest. The content itself is
+ * never selected into PHP: the digest is computed by the database.
+ *
+ * Why 16 bits: enough to notice that content changed without a change in
+ * length (a 1 in 65,536 chance of missing a change), but far too few to
+ * confirm a guess at private content, because for any guess tens of
+ * thousands of other texts give the same digest. The salt is random per
+ * snapshot, so digests cannot be matched across snapshots or sites.
  */
 class Post_Source extends Record_Source {
 
@@ -25,14 +32,23 @@ class Post_Source extends Record_Source {
 	protected $post_type;
 
 	/**
+	 * Snapshot salt for the content digest; empty disables the digest.
+	 *
+	 * @var string
+	 */
+	protected $salt;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param string $key       Type key.
 	 * @param string $post_type Post type.
+	 * @param string $salt      Content digest salt (16 hex characters) or ''.
 	 */
-	public function __construct( $key, $post_type ) {
+	public function __construct( $key, $post_type, $salt = '' ) {
 		parent::__construct( $key );
 		$this->post_type = $post_type;
+		$this->salt      = (bool) preg_match( '/^[0-9a-f]{16}$/', (string) $salt ) ? (string) $salt : '';
 	}
 
 	/**
@@ -45,6 +61,7 @@ class Post_Source extends Record_Source {
 			'status'   => Chunk_Codec::KIND_UNSIGNED,
 			'modified' => Chunk_Codec::KIND_DELTA,
 			'length'   => Chunk_Codec::KIND_UNSIGNED,
+			'digest'   => Chunk_Codec::KIND_UNSIGNED,
 		);
 	}
 
@@ -71,11 +88,13 @@ class Post_Source extends Record_Source {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Read-only keyset scan; caching would defeat the snapshot.
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT ID, post_status, post_modified_gmt, post_date_gmt, LENGTH(post_content) AS content_length
+				"SELECT ID, post_status, post_modified_gmt, post_date_gmt, LENGTH(post_content) AS content_length,
+					LEFT(MD5(CONCAT(%s, post_content)), 4) AS content_digest
 				FROM {$wpdb->posts}
 				WHERE post_type = %s AND post_status <> %s AND ID > %d AND ID <= %d
 				ORDER BY ID ASC
 				LIMIT %d",
+				'' === $this->salt ? 'nodigest' : $this->salt,
 				$this->post_type,
 				'auto-draft',
 				$after_id,
@@ -94,11 +113,22 @@ class Post_Source extends Record_Source {
 					'status'   => (string) $row['post_status'],
 					'modified' => self::gmt_to_unix( $row['post_modified_gmt'] ),
 					'length'   => max( 0, (int) $row['content_length'] ),
+					'digest'   => '' === $this->salt ? 0 : self::digest_value( $row['content_digest'] ),
 				),
 				'created' => self::gmt_to_unix( $row['post_date_gmt'] ),
 			);
 		}
 
 		return $out;
+	}
+
+	/**
+	 * Turn the 4 hex characters from the database into an integer.
+	 *
+	 * @param mixed $hex Hex string.
+	 * @return int 0 to 65535.
+	 */
+	private static function digest_value( $hex ) {
+		return is_string( $hex ) && preg_match( '/^[0-9a-fA-F]{4}$/', $hex ) ? (int) hexdec( $hex ) : 0;
 	}
 }

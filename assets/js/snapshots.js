@@ -211,6 +211,51 @@
 		window.location.assign( url || window.location.href );
 	}
 
+	/**
+	 * Start a comparison. If the snapshot cannot be matched to this site,
+	 * explain why and ask before comparing anyway.
+	 *
+	 * @param {HTMLElement} button       Button that started it.
+	 * @param {string}      snapshotId   Snapshot ID.
+	 * @param {boolean}     acknowledged Whether the admin already confirmed.
+	 */
+	function startCompare( button, snapshotId, acknowledged ) {
+		apiFetch( {
+			path: path( '/snapshots/' + snapshotId + '/compare' ),
+			method: 'POST',
+			data: { acknowledge_identity: acknowledged },
+		} ).then(
+			function ( started ) {
+				return runJob( started.job_id, button ).then( function ( status ) {
+					if ( 'completed' === status ) {
+						reload( config.pageUrl + '&comparison=' + encodeURIComponent( started.comparison_id ) );
+					}
+				} );
+			},
+			function ( error ) {
+				if ( error && 'umin_identity_unconfirmed' === error.code && ! acknowledged ) {
+					var reasons = ( error.data && error.data.reasons ) || [];
+					var message =
+						error.message +
+						'\n\n' +
+						reasons.map( function ( reason ) {
+							return '• ' + reason;
+						} ).join( '\n' ) +
+						'\n\n' +
+						__( 'Compare anyway? The results will be marked as not matched to this site.', TEXT_DOMAIN );
+
+					// eslint-disable-next-line no-alert -- An explicit acknowledgment is required before comparing unrelated sites.
+					if ( window.confirm( message ) ) {
+						startCompare( button, snapshotId, true );
+					}
+					return;
+				}
+
+				show( progressElements( button ), ( error && error.message ) || __( 'Could not start the comparison.', TEXT_DOMAIN ) );
+			}
+		);
+	}
+
 	document.addEventListener( 'click', function ( event ) {
 		var button = event.target.closest( '[data-umin-action]' );
 
@@ -257,19 +302,7 @@
 		}
 
 		if ( 'compare' === action ) {
-			var snapshotId = button.getAttribute( 'data-umin-snapshot' );
-			apiFetch( { path: path( '/snapshots/' + snapshotId + '/compare' ), method: 'POST' } ).then(
-				function ( started ) {
-					return runJob( started.job_id, button ).then( function ( status ) {
-						if ( 'completed' === status ) {
-							reload( config.pageUrl + '&comparison=' + encodeURIComponent( started.comparison_id ) );
-						}
-					} );
-				},
-				function ( error ) {
-					show( progressElements( button ), error.message || __( 'Could not start the comparison.', TEXT_DOMAIN ) );
-				}
-			);
+			startCompare( button, button.getAttribute( 'data-umin-snapshot' ), false );
 			return;
 		}
 

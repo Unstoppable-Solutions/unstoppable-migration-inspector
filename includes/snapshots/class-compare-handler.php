@@ -125,6 +125,10 @@ final class Compare_Handler extends Job_Handler {
 						'site'     => $storage['mode'],
 					),
 					'config'             => Config_Diff::compare( isset( $header['config'] ) ? (array) $header['config'] : array(), Site_Profile::config() ),
+					'identity'           => array_merge(
+						Identity_Check::assess( (int) $params['snapshot_id'], $header ),
+						array( 'acknowledged' => ! empty( $params['acknowledged'] ) )
+					),
 					'tables'             => array(),
 					'types'              => array(),
 					'types_only_on_site' => self::types_only_on_site( $header ),
@@ -197,7 +201,7 @@ final class Compare_Handler extends Job_Handler {
 			'source' => $type['source'],
 			'arg'    => $type['arg'],
 		);
-		$source     = Source_Registry::make( $definition, (string) $state['order_mode'] );
+		$source     = Source_Registry::make( $definition, (string) $state['order_mode'], isset( $header['content_salt'] ) ? (string) $header['content_salt'] : '' );
 
 		if ( null === $source ) {
 			return $this->next_type( $state );

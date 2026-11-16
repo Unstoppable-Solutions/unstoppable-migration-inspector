@@ -104,7 +104,7 @@ final class Snapshot_Validator {
 			self::fail( self::bad( 'header' ) );
 		}
 
-		self::exact_keys( $header, array( 'format_version', 'created_at', 'order_mode', 'config', 'types', 'dictionaries', 'tables', 'revisions' ), 'header' );
+		self::exact_keys( $header, array( 'format_version', 'created_at', 'order_mode', 'identity', 'content_salt', 'config', 'types', 'dictionaries', 'tables', 'revisions' ), 'header' );
 
 		if ( 1 !== $header['format_version'] ) {
 			self::fail( self::bad( 'header.format_version' ) );
@@ -113,6 +113,14 @@ final class Snapshot_Validator {
 		self::int_in( $header['created_at'], 946684800, 4102444800, 'created_at' );
 		self::one_of( $header['order_mode'], array( Woo_Storage::MODE_HPOS, Woo_Storage::MODE_LEGACY, Woo_Storage::MODE_NONE ), 'order_mode' );
 		self::int_in( $header['revisions'], 0, PHP_INT_MAX, 'revisions' );
+		self::pattern( $header['content_salt'], '/^([0-9a-f]{16})?$/', 'content_salt' );
+
+		if ( ! is_array( $header['identity'] ) ) {
+			self::fail( self::bad( 'identity' ) );
+		}
+		self::exact_keys( $header['identity'], array( 'site_key', 'name_hash' ), 'identity' );
+		self::pattern( $header['identity']['site_key'], '/^([0-9a-f]{32})?$/', 'identity.site_key' );
+		self::pattern( $header['identity']['name_hash'], '/^([0-9a-f]{64})?$/', 'identity.name_hash' );
 
 		self::validate_config( $header['config'] );
 		self::validate_types( $header['types'] );
@@ -334,7 +342,7 @@ final class Snapshot_Validator {
 				'source' => $header['types'][ $type ]['source'],
 				'arg'    => $header['types'][ $type ]['arg'],
 			);
-			$source     = Source_Registry::make( $definition, Woo_Storage::MODE_LEGACY );
+			$source     = Source_Registry::make( $definition, Woo_Storage::MODE_LEGACY, $header['content_salt'] );
 
 			try {
 				$decoded = Chunk_Codec::decode( $chunk['payload'], $chunk['count'], $chunk['sha256'], $source->kinds() );

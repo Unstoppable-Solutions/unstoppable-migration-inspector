@@ -59,6 +59,7 @@ function umin_uninstall_current_site() {
 
 	delete_option( 'umin_settings' );
 	delete_option( 'umin_db_version' );
+	delete_option( 'umin_site_key' );
 
 	wp_clear_scheduled_hook( 'umin_cleanup_reports' );
 }

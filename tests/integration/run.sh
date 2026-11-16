@@ -12,6 +12,8 @@
 #   switch     snapshot under HPOS, compare after switching to legacy
 #   migrate    snapshot on site A, export, copy the site as "site B", lose
 #              some rows the way a partial import does, import, compare
+#   unrelated  import site "hpos"'s snapshot on an unrelated fresh site;
+#              comparing must require an explicit acknowledgment (run after hpos)
 #   large      200,000 posts and 20,000 orders with memory_limit=128M
 #              (needs DB=mysql; slow)
 #
@@ -139,6 +141,16 @@ scenario_migrate() {
 	run_scenario "Migration: partial import on site B, import snapshot file, compare" "${BASE}/site-b" scenario-migrate.php destination "${BASE}/site-a-export.json" "${BASE}/site-a-expect.json"
 }
 
+scenario_unrelated() {
+	if [ ! -s "${BASE}/hpos-export.json" ]; then
+		scenario_hpos
+	fi
+	new_site "${BASE}/other" yes umin_int_other
+	wp_at "${BASE}/other" option update blogname "A Different Shop" >/dev/null
+	wp_at "${BASE}/other" option update home "http://different-shop.test" >/dev/null
+	run_scenario "Unrelated site needs acknowledgment" "${BASE}/other" scenario-unrelated.php "${BASE}/hpos-export.json"
+}
+
 scenario_large() {
 	if [ "${DB:-sqlite}" != "mysql" ]; then
 		echo "SKIP  large scenario needs DB=mysql"
@@ -153,7 +165,7 @@ mkdir -p "${BASE}"
 
 SCENARIOS=("$@")
 if [ ${#SCENARIOS[@]} -eq 0 ]; then
-	SCENARIOS=(hpos legacy switch migrate)
+	SCENARIOS=(hpos legacy switch migrate unrelated)
 fi
 
 for s in "${SCENARIOS[@]}"; do

@@ -129,7 +129,9 @@ final class Comparator {
 	 * @param array<string, int|string> $before Snapshot values.
 	 * @param array<string, int|string> $after  Site values.
 	 * @return array<string, mixed> Field => [before, after]; plus "shrank"
-	 *                              when content got smaller.
+	 *                              when content got smaller. A changed
+	 *                              "digest" means the content changed even
+	 *                              if its size did not.
 	 */
 	public static function field_changes( array $before, array $after ) {
 		$changes = array();

@@ -92,6 +92,8 @@ final class Capture_Handler extends Job_Handler {
 		switch ( $state['phase'] ) {
 			case 'discover':
 				$header['config']       = Site_Profile::config();
+				$header['identity']     = Site_Identity::for_header();
+				$header['content_salt'] = bin2hex( random_bytes( 8 ) );
 				$header['types']        = array();
 				$header['dictionaries'] = array();
 				$header['table_list']   = Site_Profile::tables();
@@ -169,7 +171,7 @@ final class Capture_Handler extends Job_Handler {
 			'source' => $header['types'][ $key ]['source'],
 			'arg'    => $header['types'][ $key ]['arg'],
 		);
-		$source     = Source_Registry::make( $definition, (string) $header['order_mode'] );
+		$source     = Source_Registry::make( $definition, (string) $header['order_mode'], isset( $header['content_salt'] ) ? (string) $header['content_salt'] : '' );
 		$batch_size = max( 1, min( Chunk_Codec::MAX_RECORDS, (int) $params['batch_size'] ) );
 		$rows       = null === $source ? array() : $source->fetch_after( (int) $state['last_id'], $batch_size );
 

@@ -21,13 +21,14 @@ defined( 'ABSPATH' ) || exit;
  * 1  snapshots, scans, findings.
  * 2  snapshot status column; snapshot chunks, jobs, comparisons and
  *    comparison items (Phase 2a).
+ * 3  no table change; triggers creation of the site identity key option.
  */
 final class Schema {
 
 	/**
 	 * Current schema version. Bump when a table definition changes.
 	 */
-	const VERSION = '2';
+	const VERSION = '3';
 
 	/**
 	 * Option that stores the installed schema version for this site.

@@ -42,6 +42,7 @@ final class Activator {
 	public static function install_current_site() {
 		Schema::install();
 		Settings::ensure_defaults();
+		\UnstoppableSolutions\MigrationInspector\Snapshots\Site_Identity::ensure_key();
 	}
 
 	/**

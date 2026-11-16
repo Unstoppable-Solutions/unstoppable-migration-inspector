@@ -137,18 +137,19 @@ final class Source_Registry {
 	/**
 	 * Build a source from a definition.
 	 *
-	 * @param array{key: string, source: string, arg: string} $definition Definition.
-	 * @param string                                          $order_mode Storage mode for orders on this site.
+	 * @param array{key: string, source: string, arg: string} $definition   Definition.
+	 * @param string                                          $order_mode   Storage mode for orders on this site.
+	 * @param string                                          $content_salt Snapshot content digest salt, or ''.
 	 * @return Record_Source|null
 	 */
-	public static function make( array $definition, $order_mode ) {
+	public static function make( array $definition, $order_mode, $content_salt = '' ) {
 		if ( ! self::is_valid_definition( $definition ) ) {
 			return null;
 		}
 
 		switch ( $definition['source'] ) {
 			case 'post':
-				return new Post_Source( $definition['key'], $definition['arg'] );
+				return new Post_Source( $definition['key'], $definition['arg'], $content_salt );
 			case 'user':
 				return new User_Source( $definition['key'] );
 			case 'comment':

@@ -19,7 +19,7 @@ You moved your WordPress site to a new host, server or domain. Did everything ar
 = Included in this build =
 
 * A Migration Health dashboard that shows each inspection category as Passed, Warning, Critical, Not Tested or Not Applicable. The plugin never calls a site healthy just because some checks passed.
-* **Migration snapshots.** Before you move a site, take a snapshot. After the move, compare it with the new site. The comparison lists the exact IDs of posts, pages, media, users, comments, terms and WooCommerce orders that are missing, separately from records that changed and records created after the snapshot. Snapshots can be exported as a file and imported on the new site. They contain IDs, statuses, dates, sizes and settings only, never names, email addresses, content or order details.
+* **Migration snapshots.** Before you move a site, take a snapshot. After the move, compare it with the new site. The comparison lists the exact IDs of posts, pages, media, users, comments, terms and WooCommerce orders from the snapshot that cannot be found on the new site, separately from records that changed (including content changes that keep the same size) and records created after the snapshot. Snapshots can be exported as a file and imported on the new site. They contain IDs, statuses, dates, sizes and settings only, never names, email addresses, content or order details.
 * WooCommerce orders are compared whether the store uses High-Performance Order Storage (HPOS) or the older posts storage, including after a switch between the two.
 * Settings for the old domains your site used, scan speed limits for shared hosting, and data retention.
 * Your data stays yours: deleting the plugin keeps its snapshots and scan history unless you choose to remove them.
@@ -68,7 +68,11 @@ No. It stores record IDs, status names, dates, content sizes in bytes, user role
 
 = Can a snapshot find missing WooCommerce orders? =
 
-Yes, by order ID, as long as the snapshot was taken on the old site before the move. It works with HPOS and with the older posts storage. Orders placed after the snapshot are listed separately as created after the snapshot.
+It finds orders whose IDs existed in the snapshot but cannot be found on the new site, as long as the snapshot was taken on the old site before the move. It works with HPOS and with the older posts storage. Orders placed after the snapshot are listed separately. An order that is "not found" is not automatically a lost order: it may have been deleted on purpose after the snapshot. Check each one against the old site or a backup before treating it as lost.
+
+= What if I compare a snapshot from a different site? =
+
+The plugin checks whether the snapshot belongs to this site before comparing: it looks at a site key that travels with the database, the site name, address and table prefix, and whether a sample of the snapshot's record IDs exist here. If it cannot confirm the match, it explains why and asks you to confirm before comparing, and the results are clearly marked as not matched.
 
 = Does it replace my backup or migration plugin? =
 

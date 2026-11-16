@@ -49,6 +49,8 @@ final class Snapshot_Service {
 	 * @return array{snapshot_id: int, job_id: int}|\WP_Error
 	 */
 	public static function start_capture( $label ) {
+		Site_Identity::ensure_key();
+
 		$snapshots = new Snapshot_Repository();
 		$label     = '' === trim( $label )
 			/* translators: %s: date and time. */
@@ -94,10 +96,15 @@ final class Snapshot_Service {
 	/**
 	 * Start comparing a complete snapshot with this site.
 	 *
-	 * @param int $snapshot_id Snapshot ID.
+	 * If the snapshot cannot be matched to this site, the comparison is
+	 * refused unless the administrator has acknowledged that.
+	 *
+	 * @param int  $snapshot_id  Snapshot ID.
+	 * @param bool $acknowledged Whether the admin confirmed comparing a
+	 *                           snapshot that may belong to another site.
 	 * @return array{comparison_id: int, job_id: int}|\WP_Error
 	 */
-	public static function start_compare( $snapshot_id ) {
+	public static function start_compare( $snapshot_id, $acknowledged = false ) {
 		$snapshots = new Snapshot_Repository();
 		$snapshot  = $snapshots->get( $snapshot_id );
 
@@ -107,6 +114,22 @@ final class Snapshot_Service {
 
 		if ( Snapshot_Repository::STATUS_COMPLETE !== $snapshot['status'] ) {
 			return new \WP_Error( 'umin_incomplete', __( 'Only a complete snapshot can be compared.', 'unstoppable-migration-inspector' ), array( 'status' => 409 ) );
+		}
+
+		$identity = Identity_Check::assess( $snapshot_id, $snapshot['header'] );
+
+		if ( $identity['needs_ack'] && ! $acknowledged ) {
+			return new \WP_Error(
+				'umin_identity_unconfirmed',
+				Identity_Check::LIKELY_UNRELATED === $identity['verdict']
+					? __( 'This snapshot appears to come from a different site. Comparing it with this site would list many records as not found that were never meant to be here.', 'unstoppable-migration-inspector' )
+					: __( 'It could not be confirmed that this snapshot comes from this site.', 'unstoppable-migration-inspector' ),
+				array(
+					'status'  => 409,
+					'verdict' => $identity['verdict'],
+					'reasons' => $identity['reasons'],
+				)
+			);
 		}
 
 		$comparisons   = new Comparison_Repository();
@@ -122,6 +145,7 @@ final class Snapshot_Service {
 				'snapshot_id'   => $snapshot_id,
 				'comparison_id' => $comparison_id,
 				'batch_size'    => (int) Settings::get( 'batch_size' ),
+				'acknowledged'  => (bool) $acknowledged,
 			)
 		);
 

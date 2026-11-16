@@ -349,7 +349,7 @@ final class Snapshot_Repository {
 	 * @return array<string, mixed>
 	 */
 	public static function canonical_header( array $header ) {
-		$keys = array( 'format_version', 'created_at', 'order_mode', 'config', 'types', 'dictionaries', 'tables', 'revisions' );
+		$keys = array( 'format_version', 'created_at', 'order_mode', 'identity', 'content_salt', 'config', 'types', 'dictionaries', 'tables', 'revisions' );
 		$out  = array();
 
 		foreach ( $keys as $key ) {

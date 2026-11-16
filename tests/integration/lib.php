@@ -161,6 +161,58 @@ function umin_t_chunk_signature( $snapshot_id ) {
 }
 
 /**
+ * Every decoded record of a snapshot as "type|id|field=value…", leaving out
+ * the salted content digest (each snapshot has its own random salt).
+ */
+function umin_t_records_without_digest( $snapshot_id ) {
+	$repo     = new Snapshot_Repository();
+	$snapshot = $repo->get( $snapshot_id );
+	$header   = $snapshot['header'];
+	$out      = array();
+
+	foreach ( $header['types'] as $key => $type ) {
+		$source = UnstoppableSolutions\MigrationInspector\Snapshots\Source_Registry::make( array( 'key' => $key, 'source' => $type['source'], 'arg' => $type['arg'] ), $header['order_mode'], $header['content_salt'] );
+		$dict   = new UnstoppableSolutions\MigrationInspector\Snapshots\Dictionary( $header['dictionaries'] );
+		for ( $seq = 0; $seq < $type['chunks']; $seq++ ) {
+			$records = UnstoppableSolutions\MigrationInspector\Snapshots\Comparator::decode_chunk( $repo->get_chunk( $snapshot_id, $key, $seq ), $source->kinds(), $source->coded_fields(), $dict );
+			foreach ( $records as $id => $fields ) {
+				unset( $fields['digest'] );
+				$out[] = $key . '|' . $id . '|' . http_build_query( $fields );
+			}
+		}
+	}
+
+	sort( $out );
+	return $out;
+}
+
+/**
+ * Whether a snapshot's stored post digests match a fresh computation by the
+ * database with the same salt.
+ */
+function umin_t_digests_match_database( $snapshot_id, $type_key ) {
+	$repo     = new Snapshot_Repository();
+	$snapshot = $repo->get( $snapshot_id );
+	$header   = $snapshot['header'];
+	$type     = $header['types'][ $type_key ];
+	$source   = UnstoppableSolutions\MigrationInspector\Snapshots\Source_Registry::make( array( 'key' => $type_key, 'source' => $type['source'], 'arg' => $type['arg'] ), $header['order_mode'], $header['content_salt'] );
+	$stored   = UnstoppableSolutions\MigrationInspector\Snapshots\Comparator::decode_chunk( $repo->get_chunk( $snapshot_id, $type_key, 0 ), $source->kinds(), $source->coded_fields(), new UnstoppableSolutions\MigrationInspector\Snapshots\Dictionary( $header['dictionaries'] ) );
+	$live     = $source->fetch_after( 0, 5000 );
+	$checked  = 0;
+
+	foreach ( $live as $row ) {
+		if ( isset( $stored[ $row['id'] ] ) ) {
+			if ( $stored[ $row['id'] ]['digest'] !== $row['fields']['digest'] ) {
+				return false;
+			}
+			$checked++;
+		}
+	}
+
+	return $checked > 0;
+}
+
+/**
  * Hash of every row of every non-plugin table, to prove read-only behaviour.
  * Excludes transients and WooCommerce's background-job tables, which
  * WordPress and WooCommerce may touch on their own during any request.

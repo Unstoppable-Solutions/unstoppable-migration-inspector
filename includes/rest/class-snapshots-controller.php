@@ -79,7 +79,15 @@ class Snapshots_Controller extends REST_Controller {
 					'methods'             => \WP_REST_Server::CREATABLE,
 					'callback'            => array( $this, 'compare_snapshot' ),
 					'permission_callback' => array( $this, 'can_view' ),
-					'args'                => $id_arg,
+					'args'                => array_merge(
+						$id_arg,
+						array(
+							'acknowledge_identity' => array(
+								'type'    => 'boolean',
+								'default' => false,
+							),
+						)
+					),
 				),
 			)
 		);
@@ -189,7 +197,7 @@ class Snapshots_Controller extends REST_Controller {
 	 * @return \WP_REST_Response|\WP_Error
 	 */
 	public function compare_snapshot( \WP_REST_Request $request ) {
-		$result = Snapshot_Service::start_compare( (int) $request['id'] );
+		$result = Snapshot_Service::start_compare( (int) $request['id'], (bool) $request->get_param( 'acknowledge_identity' ) );
 
 		return is_wp_error( $result ) ? $result : rest_ensure_response( $result );
 	}

@@ -88,5 +88,15 @@ umin_t_check( 'Domain change is reported', in_array( 'home', $keys, true ) && in
 
 $posts_table = $summary['tables'][ $wpdb->prefix . 'posts' ];
 umin_t_same( 'Posts table shows fewer rows than before', 'decreased', $posts_table['status'] );
+umin_t_same( 'A copied database is recognised as the same site (site key carried over)', 'same_site', $summary['identity']['verdict'] );
+
+// A destination whose database was rebuilt has no matching site key, but
+// keeps IDs, prefix and name: it should be "likely the same", no prompt.
+delete_option( 'umin_site_key' );
+update_option( 'umin_site_key', bin2hex( random_bytes( 16 ) ), false );
+$rebuilt = UnstoppableSolutions\MigrationInspector\Snapshots\Identity_Check::assess( $imported, umin_t_snapshot( $imported )['header'] );
+umin_t_same( 'Rebuilt database with the same IDs is "likely the same site"', 'likely_same', $rebuilt['verdict'] );
+umin_t_check( 'Rebuilt database needs no acknowledgment', false === $rebuilt['needs_ack'] );
+umin_t_check( 'Rebuilt database still explains the key mismatch', ! empty( $rebuilt['reasons'] ) );
 
 umin_t_done();

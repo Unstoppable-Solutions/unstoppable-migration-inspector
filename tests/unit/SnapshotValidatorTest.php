@@ -41,20 +41,26 @@ final class SnapshotValidatorTest extends Test_Case {
 			'status'   => Chunk_Codec::KIND_UNSIGNED,
 			'modified' => Chunk_Codec::KIND_DELTA,
 			'length'   => Chunk_Codec::KIND_UNSIGNED,
+			'digest'   => Chunk_Codec::KIND_UNSIGNED,
 		);
 		$order_kinds = array(
 			'status'   => Chunk_Codec::KIND_UNSIGNED,
 			'modified' => Chunk_Codec::KIND_DELTA,
 		);
 
-		$posts_a = Chunk_Codec::encode( array( 1, 2, 3 ), array( 'status' => array( 1, 1, 2 ), 'modified' => array( 10, 20, 30 ), 'length' => array( 5, 6, 7 ) ), $post_kinds );
-		$posts_b = Chunk_Codec::encode( array( 10, 11 ), array( 'status' => array( 1, 1 ), 'modified' => array( 40, 50 ), 'length' => array( 8, 9 ) ), $post_kinds );
+		$posts_a = Chunk_Codec::encode( array( 1, 2, 3 ), array( 'status' => array( 1, 1, 2 ), 'modified' => array( 10, 20, 30 ), 'length' => array( 5, 6, 7 ), 'digest' => array( 100, 65535, 0 ) ), $post_kinds );
+		$posts_b = Chunk_Codec::encode( array( 10, 11 ), array( 'status' => array( 1, 1 ), 'modified' => array( 40, 50 ), 'length' => array( 8, 9 ), 'digest' => array( 7, 8 ) ), $post_kinds );
 		$orders  = Chunk_Codec::encode( array( 100, 101 ), array( 'status' => array( 1, 2 ), 'modified' => array( 60, 70 ) ), $order_kinds );
 
 		$header = array(
 			'format_version' => 1,
 			'created_at'     => 1763300000,
 			'order_mode'     => 'hpos',
+			'identity'       => array(
+				'site_key'  => '0123456789abcdef0123456789abcdef',
+				'name_hash' => hash( 'sha256', 'example store' ),
+			),
+			'content_salt'   => '0123456789abcdef',
 			'config'         => array(
 				'home'                => 'https://old.example.com',
 				'siteurl'             => 'https://old.example.com',
@@ -292,6 +298,20 @@ final class SnapshotValidatorTest extends Test_Case {
 
 		$doc = $this->valid_document();
 		$doc['chunks'][0]['count'] = '3';
+		$this->assertRefused( $this->with_checksum( $doc ) );
+	}
+
+	public function test_bad_identity_or_salt_is_refused() {
+		$doc = $this->valid_document();
+		$doc['snapshot']['header']['identity']['site_key'] = 'not-a-key';
+		$this->assertRefused( $this->with_checksum( $doc ) );
+
+		$doc = $this->valid_document();
+		$doc['snapshot']['header']['identity']['admin'] = 'x';
+		$this->assertRefused( $this->with_checksum( $doc ) );
+
+		$doc = $this->valid_document();
+		$doc['snapshot']['header']['content_salt'] = 'ZZZZ';
 		$this->assertRefused( $this->with_checksum( $doc ) );
 	}
 

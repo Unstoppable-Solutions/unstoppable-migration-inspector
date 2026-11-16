@@ -11,6 +11,7 @@ use UnstoppableSolutions\MigrationInspector\Core\Capabilities;
 use UnstoppableSolutions\MigrationInspector\Jobs\Job_Store;
 use UnstoppableSolutions\MigrationInspector\Snapshots\Comparator;
 use UnstoppableSolutions\MigrationInspector\Snapshots\Comparison_Repository;
+use UnstoppableSolutions\MigrationInspector\Snapshots\Identity_Check;
 use UnstoppableSolutions\MigrationInspector\Snapshots\Snapshot_Repository;
 use UnstoppableSolutions\MigrationInspector\Snapshots\Snapshot_Transfer;
 use UnstoppableSolutions\MigrationInspector\Snapshots\Source_Registry;
@@ -331,6 +332,8 @@ final class Snapshots_Page {
 		}
 
 		$overall = $totals[ Comparator::MISSING ] > 0 ? 'critical' : ( $totals[ Comparator::CHANGED ] > 0 ? 'warning' : 'passed' );
+
+		self::render_identity( isset( $summary['identity'] ) ? (array) $summary['identity'] : array() );
 		?>
 		<div class="umin-overall umin-status--<?php echo esc_attr( $overall ); ?>">
 			<h2 class="umin-overall__heading">
@@ -338,11 +341,11 @@ final class Snapshots_Page {
 				if ( $totals[ Comparator::MISSING ] > 0 ) {
 					printf(
 						/* translators: %s: number of records. */
-						esc_html( _n( '%s record from the snapshot is missing on this site', '%s records from the snapshot are missing on this site', $totals[ Comparator::MISSING ], 'unstoppable-migration-inspector' ) ),
+						esc_html( _n( '%s record from the snapshot was not found on this site', '%s records from the snapshot were not found on this site', $totals[ Comparator::MISSING ], 'unstoppable-migration-inspector' ) ),
 						esc_html( number_format_i18n( $totals[ Comparator::MISSING ] ) )
 					);
 				} else {
-					esc_html_e( 'Every record in the snapshot exists on this site', 'unstoppable-migration-inspector' );
+					esc_html_e( 'Every record in the snapshot was found on this site', 'unstoppable-migration-inspector' );
 				}
 				?>
 			</h2>
@@ -359,14 +362,15 @@ final class Snapshots_Page {
 				?>
 			</p>
 			<?php if ( $totals[ Comparator::MISSING ] > 0 ) : ?>
-				<p><a class="button" href="<?php echo esc_url( Snapshot_Downloads::csv_url( $comparison_id, Comparator::MISSING ) ); ?>"><?php esc_html_e( 'Download Missing IDs (CSV)', 'unstoppable-migration-inspector' ); ?></a></p>
+				<p><a class="button" href="<?php echo esc_url( Snapshot_Downloads::csv_url( $comparison_id, Comparator::MISSING ) ); ?>"><?php esc_html_e( 'Download Not-Found IDs (CSV)', 'unstoppable-migration-inspector' ); ?></a></p>
 			<?php endif; ?>
 		</div>
 
 		<p class="description">
-			<?php esc_html_e( 'What this means: "Missing" records existed when the snapshot was taken and are not on this site now. "Changed" records exist on both but their status, date, size or role differs. "Created after the snapshot" records are newer than the snapshot. "Not in the snapshot" records are older than the snapshot but were not in it, which usually means data came from somewhere else. A snapshot is not a backup: it can show what is missing, but it cannot restore it.', 'unstoppable-migration-inspector' ); ?>
+			<?php esc_html_e( 'What this means: "Not found" records existed when the snapshot was taken and their IDs cannot be found on this site now. That is a strong sign something did not transfer, but it is not proof of loss: a record may also have been deleted on purpose after the snapshot. "Changed" records exist on both but their status, date, content, size or role differs. "Created after the snapshot" records are newer than the snapshot. "Not in the snapshot" records are older than the snapshot but were not in it, which usually means data came from somewhere else. A snapshot is not a backup: it can show what was not found, but it cannot restore it.', 'unstoppable-migration-inspector' ); ?>
 		</p>
 
+		<?php self::render_order_caution( isset( $summary['types'] ) ? (array) $summary['types'] : array() ); ?>
 		<?php self::render_order_storage( isset( $summary['order_storage'] ) ? (array) $summary['order_storage'] : array() ); ?>
 
 		<h2 class="umin-section-title"><?php esc_html_e( 'Records', 'unstoppable-migration-inspector' ); ?></h2>
@@ -376,7 +380,7 @@ final class Snapshots_Page {
 					<th scope="col"><?php esc_html_e( 'Record type', 'unstoppable-migration-inspector' ); ?></th>
 					<th scope="col" class="num"><?php esc_html_e( 'In snapshot', 'unstoppable-migration-inspector' ); ?></th>
 					<th scope="col" class="num"><?php esc_html_e( 'On this site', 'unstoppable-migration-inspector' ); ?></th>
-					<th scope="col" class="num"><?php esc_html_e( 'Missing', 'unstoppable-migration-inspector' ); ?></th>
+					<th scope="col" class="num"><?php esc_html_e( 'Not found', 'unstoppable-migration-inspector' ); ?></th>
 					<th scope="col" class="num"><?php esc_html_e( 'Changed', 'unstoppable-migration-inspector' ); ?></th>
 					<th scope="col" class="num"><?php esc_html_e( 'Created after snapshot', 'unstoppable-migration-inspector' ); ?></th>
 					<th scope="col" class="num"><?php esc_html_e( 'Not in snapshot', 'unstoppable-migration-inspector' ); ?></th>
@@ -449,6 +453,66 @@ final class Snapshots_Page {
 				</td>
 			<?php endforeach; ?>
 		</tr>
+		<?php
+	}
+
+	/**
+	 * Caution shown when orders were not found: not found is not proof of loss.
+	 *
+	 * @param array<string, array<string, int>> $types Per-type totals.
+	 * @return void
+	 */
+	private static function render_order_caution( array $types ) {
+		foreach ( $types as $key => $totals ) {
+			if ( 0 === strpos( (string) $key, 'wc_' ) && ! empty( $totals[ Comparator::MISSING ] ) ) {
+				self::render_order_notice();
+				return;
+			}
+		}
+	}
+
+	/**
+	 * The "not found is not the same as lost" notice for orders.
+	 *
+	 * @return void
+	 */
+	private static function render_order_notice() {
+		?>
+		<div class="notice notice-warning inline umin-order-caution">
+			<p>
+				<strong><?php esc_html_e( 'Orders not found are not necessarily lost orders.', 'unstoppable-migration-inspector' ); ?></strong>
+				<?php esc_html_e( 'Each order listed as not found existed when the snapshot was taken and its ID cannot be found on this site now. That alone does not prove the order was lost: it may have been deleted on purpose after the snapshot, permanently removed from the trash, or moved by another plugin. Before treating an order as lost, look it up on the old site or in a backup taken before the move.', 'unstoppable-migration-inspector' ); ?>
+			</p>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Whether the snapshot was matched to this site.
+	 *
+	 * @param array<string, mixed> $identity Identity assessment stored with the comparison.
+	 * @return void
+	 */
+	private static function render_identity( array $identity ) {
+		if ( empty( $identity['verdict'] ) ) {
+			return;
+		}
+
+		$confirmed = in_array( $identity['verdict'], array( Identity_Check::SAME_SITE, Identity_Check::LIKELY_SAME ), true );
+		?>
+		<div class="notice <?php echo $confirmed ? 'notice-info' : 'notice-error'; ?> inline umin-identity">
+			<p>
+				<strong><?php echo $confirmed ? esc_html__( 'Snapshot matched to this site.', 'unstoppable-migration-inspector' ) : esc_html__( 'Snapshot not matched to this site.', 'unstoppable-migration-inspector' ); ?></strong>
+				<?php echo esc_html( Identity_Check::describe( (string) $identity['verdict'] ) ); ?>
+			</p>
+			<?php if ( ! $confirmed && ! empty( $identity['reasons'] ) ) : ?>
+				<ul class="ul-disc">
+					<?php foreach ( (array) $identity['reasons'] as $reason ) : ?>
+						<li><?php echo esc_html( (string) $reason ); ?></li>
+					<?php endforeach; ?>
+				</ul>
+			<?php endif; ?>
+		</div>
 		<?php
 	}
 
@@ -597,7 +661,7 @@ final class Snapshots_Page {
 	 */
 	private static function render_items( $comparison_id, $type, $kind, $paged ) {
 		$titles = array(
-			Comparator::MISSING => __( 'Missing on this site', 'unstoppable-migration-inspector' ),
+			Comparator::MISSING => __( 'Not found on this site', 'unstoppable-migration-inspector' ),
 			Comparator::CHANGED => __( 'Changed since the snapshot', 'unstoppable-migration-inspector' ),
 			Comparator::ADDED   => __( 'Created after the snapshot', 'unstoppable-migration-inspector' ),
 			Comparator::EXTRA   => __( 'Not in the snapshot', 'unstoppable-migration-inspector' ),
@@ -627,7 +691,10 @@ final class Snapshots_Page {
 			?>
 		</h2>
 		<?php if ( Comparator::MISSING === $kind ) : ?>
-			<p class="description"><?php esc_html_e( 'These IDs existed when the snapshot was taken and are not on this site. Restore them from a backup of the old site, or re-run the migration for the missing data.', 'unstoppable-migration-inspector' ); ?></p>
+			<p class="description"><?php esc_html_e( 'These IDs existed when the snapshot was taken and cannot be found on this site. Check them against the old site or a backup: if they should be here, restore them from that backup or re-run the migration for the missing data.', 'unstoppable-migration-inspector' ); ?></p>
+			<?php if ( 0 === strpos( $type, 'wc_' ) ) : ?>
+				<?php self::render_order_notice(); ?>
+			<?php endif; ?>
 		<?php endif; ?>
 		<table class="widefat striped umin-table">
 			<thead>
@@ -740,6 +807,15 @@ final class Snapshots_Page {
 			}
 
 			list( $before, $after ) = array_values( $change );
+
+			if ( 'digest' === $field ) {
+				// The digest is a privacy-preserving fingerprint, not a value
+				// worth showing; only the fact that it changed matters.
+				$parts[] = isset( $detail['length'] )
+					? __( 'content changed', 'unstoppable-migration-inspector' )
+					: __( 'content changed, although its size is the same', 'unstoppable-migration-inspector' );
+				continue;
+			}
 
 			if ( 'modified' === $field ) {
 				$before = self::format_time( (int) $before );
