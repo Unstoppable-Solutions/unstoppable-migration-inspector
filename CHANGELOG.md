@@ -6,6 +6,10 @@ described at https://keepachangelog.com.
 
 ## [Unreleased]
 
+### Changed
+- Schema version 4: findings gain `kind` and `batch_key` columns.
+- The dashboard reads the latest completed scan.
+
 ### Performance
 - Snapshot capture reads posts and orders by primary key. On MariaDB this
   cut capture of 200,000 posts from about 25 s to about 2.5 s.
@@ -34,5 +38,17 @@ described at https://keepachangelog.com.
   reported. Nothing readable is derived from content.
 - "Not found" wording and a caution that a missing order ID is not proof the
   order was lost.
+- Read-only migration scanner (Phase 2b): Scan Website on the dashboard and
+  a Scan Results screen. Checks old/staging/temporary addresses (plain,
+  JSON-escaped and URL-encoded, in posts, custom fields, settings, comments
+  and term fields), HTTPS and mixed content, core tables, table prefix and
+  user roles, character sets, uploads folder, missing Media Library files
+  and image sizes, broken links to uploads, permalinks and .htaccess,
+  missing theme/plugin files, overdue cron and Action Scheduler tasks,
+  cache/debug constants, search engine visibility, WooCommerce pages, HPOS
+  storage and tables, lookup/analytics data and coming-soon mode. Every
+  finding has a severity, explanation, next step and the affected items.
+  Resumable, batch-idempotent, bounded memory.
+- Manual testing guide for staging copies made with WPvivid Staging Pro.
 - Persistent jobs with leases: work resumes after a closed browser or a
   server timeout; no background execution.

@@ -14,11 +14,13 @@ Checks a WordPress site after it has been moved and explains what did not transf
 
 You moved your WordPress site to a new host, server or domain. Did everything arrive? Unstoppable Migration Inspector answers that question.
 
-**This is a development build (0.1.0).** It contains the dashboard, settings and migration snapshots. The scanner, repair tools and reports are being built in stages and are not included yet. Nothing below the "Planned" heading works in this build.
+**This is a development build (0.1.0).** It contains the dashboard, the read-only scanner, migration snapshots and settings. Repair tools and reports are being built in stages and are not included yet. Nothing below the "Planned" heading works in this build.
 
 = Included in this build =
 
 * A Migration Health dashboard that shows each inspection category as Passed, Warning, Critical, Not Tested or Not Applicable. The plugin never calls a site healthy just because some checks passed.
+* **Scan Website:** a read-only inspection of your site after a move. It looks for links and settings that still use the old domain, a staging site or a temporary host address (including inside page-builder data and serialized settings), HTTPS and mixed-content problems, missing database tables, table prefix problems that leave users without roles, Media Library files that did not arrive, broken links to uploads, permalink and .htaccess problems, missing theme or plugin files, overdue scheduled tasks, risky cache and debug settings, search engines being blocked, and, when WooCommerce is active, store pages, HPOS order storage and "coming soon" mode.
+* Every finding has a severity (Critical, Warning or Notice), an explanation of why it matters, a recommended next step and the exact items affected. Large sites are scanned in small steps, and an interrupted scan resumes where it stopped.
 * **Migration snapshots.** Before you move a site, take a snapshot. After the move, compare it with the new site. The comparison lists the exact IDs of posts, pages, media, users, comments, terms and WooCommerce orders from the snapshot that cannot be found on the new site, separately from records that changed (including content changes that keep the same size) and records created after the snapshot. Snapshots can be exported as a file and imported on the new site. They contain IDs, statuses, dates, sizes, a short content fingerprint per post and settings, never names, email addresses, content or order details.
 * WooCommerce orders are compared whether the store uses High-Performance Order Storage (HPOS) or the older posts storage, including after a switch between the two.
 * Settings for the old domains your site used, scan speed limits for shared hosting, and data retention.
@@ -26,7 +28,6 @@ You moved your WordPress site to a new host, server or domain. Did everything ar
 
 = Planned for version 1.0 =
 
-* **Scan Website:** a read-only inspection of domains and URLs, the database, media files, HTTPS and mixed content, WordPress configuration and, when it is active, WooCommerce.
 * **Repair Center:** a plain explanation of each problem, why it matters and how to fix it. Where a fix can be done safely, such as a carefully limited database replacement, the plugin offers it with a preview, confirmation and an undo log.
 * **Reports:** downloadable CSV, JSON and printable reports.
 
@@ -61,6 +62,14 @@ Administrators. On multisite, only super admins will be able to run anything tha
 = Is a snapshot a backup? =
 
 No. A snapshot records which records existed and a few facts about each (status, dates, size), not their content. It can tell you exactly what is missing after a move, but it cannot restore it. Keep a real backup of the old site until you have checked the new one.
+
+= Does the scan change anything? =
+
+No. The scan only reads your site's database, settings and files. The only data it writes is its own results, stored in the plugin's own tables. You can delete old scan results from the Scan Results screen.
+
+= How does the scan know my old domain? =
+
+Enter it under Migration Inspector > Settings > General > Previous domains. The scan also detects likely old addresses: where a migration snapshot was taken, the address remembered in your posts' internal IDs (GUIDs), and staging or temporary addresses linked from recent content. Detected addresses can include sites that are not yours, such as demo content, so check the listed items before changing anything.
 
 = Does a snapshot contain customer data? =
 
@@ -99,6 +108,7 @@ The plugin stores its settings in one WordPress option (`umin_settings`) and cre
 = 0.1.0 =
 * Development build: plugin foundation, Migration Health dashboard, tabbed settings that save each tab independently, database tables, REST status route and uninstall routine.
 * Migration snapshots: capture, compare (missing, changed, created after snapshot, not in snapshot), secure export and import, WooCommerce HPOS and legacy order storage.
+* Read-only scanner: Scan Website on the dashboard, a Scan Results screen with severity, explanation, next step and affected items for each finding, and resumable scanning for large sites.
 
 == Upgrade Notice ==
 

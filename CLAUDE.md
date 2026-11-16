@@ -39,12 +39,15 @@ Every push and PR runs the official WordPress Plugin Check against the codebase 
 
 **Secrets used by deploy:** `SVN_USERNAME`, `SVN_PASSWORD` — org-level secrets on `unstoppable-solutions`. Nothing per-repo.
 
-`coding-standards.yml` also runs PHP lint, PHPCS (WordPress + PHPCompatibilityWP 7.4+) and the PHPUnit unit tests on every push and PR. Locally: `composer lint`, `composer phpcs`, `composer test`, `tests/smoke/run.sh` for the live WordPress check and `tests/integration/run.sh` for the snapshot scenarios (WooCommerce, HPOS/legacy, migration, `large` on MySQL). Do not start Phase 3 (database modifications) until the scanner and snapshots are thoroughly tested.
+`coding-standards.yml` also runs PHP lint, PHPCS (WordPress + PHPCompatibilityWP 7.4+) and the PHPUnit unit tests on every push and PR. Locally: `composer lint`, `composer phpcs`, `composer test`, `tests/smoke/run.sh` for the live WordPress check and `tests/integration/run.sh` for the snapshot and scanner scenarios (WooCommerce, HPOS/legacy, migration, scan, `large` on MySQL). Manual testing with staging copies: `docs/manual-testing-wpvivid.md`. Do not start Phase 3 (database modifications) until the scanner and snapshots are thoroughly tested.
 
 ## Known phpcs:ignores specific to this plugin
 
 - `includes/core/class-schema.php` `drop_tables()` and `uninstall.php`: `DROP TABLE IF EXISTS %i` on the plugin's own tables (fixed names, not input). DirectQuery/NoCaching/SchemaChange are expected for uninstall.
 - `includes/admin/class-settings-page.php` `current_tab()`: `NonceVerification.Recommended` on a read-only `?tab=` value that is validated against an allowlist.
+- `includes/admin/class-scan-page.php` `render()`: `NonceVerification.Recommended` on read-only `?scan=`, `?group=`, `?paged=` view parameters (absint / sanitized; only used to choose what to display).
+- `includes/scanner/class-row-reader.php` `prefilter()` and `read_group()`: `PreparedSQL.NotPrepared` and `PluginCheck.Security.DirectDB.UnescapedDBParameter`. The SQL string is assembled only from fixed `%i`/`%s`/`%d` placeholders (one per column, pattern or ID) and every value goes through `$wpdb->prepare()`; the column count varies per table, so a literal string is not possible.
+- `includes/scanner/checks/class-attachment-files-check.php` `missing_sizes()`: `unserialize()` of core attachment metadata with `allowed_classes => false` (read only, objects refused).
 
 ## Project rules (owner decisions, 16 Nov 2026)
 
