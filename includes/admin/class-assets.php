@@ -51,5 +51,26 @@ final class Assets {
 			array( 'dashicons' ),
 			UMIN_VERSION
 		);
+
+		if ( Admin_Menu::is_snapshots_screen( $hook_suffix ) ) {
+			wp_enqueue_script(
+				'umin-snapshots',
+				UMIN_URL . 'assets/js/snapshots.js',
+				array( 'wp-api-fetch', 'wp-i18n' ),
+				UMIN_VERSION,
+				true
+			);
+
+			wp_set_script_translations( 'umin-snapshots', 'unstoppable-migration-inspector' );
+
+			wp_localize_script(
+				'umin-snapshots',
+				'uminSnapshots',
+				array(
+					'namespace' => \UnstoppableSolutions\MigrationInspector\REST\REST_Controller::NAMESPACE_V1,
+					'pageUrl'   => Admin_Menu::url( Admin_Menu::SNAPSHOTS_SLUG ),
+				)
+			);
+		}
 	}
 }

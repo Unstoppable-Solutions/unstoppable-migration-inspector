@@ -161,7 +161,7 @@ final class Dashboard_Page {
 		<div class="umin-panel umin-snapshot-panel">
 			<h2><?php esc_html_e( 'Planning a move? Take a snapshot first', 'unstoppable-migration-inspector' ); ?></h2>
 			<p><?php esc_html_e( 'A migration snapshot records how many posts, pages, media files, users, orders and other records this site has, plus key settings. After the move, compare it with the new site to find records that did not arrive. Snapshots contain counts and settings only, never customer details.', 'unstoppable-migration-inspector' ); ?></p>
-			<p class="description"><?php esc_html_e( 'Snapshots are not available in this development build yet.', 'unstoppable-migration-inspector' ); ?></p>
+			<p><a class="button" href="<?php echo esc_url( Admin_Menu::url( Admin_Menu::SNAPSHOTS_SLUG ) ); ?>"><?php esc_html_e( 'Go to Snapshots', 'unstoppable-migration-inspector' ); ?></a></p>
 		</div>
 		<?php
 	}

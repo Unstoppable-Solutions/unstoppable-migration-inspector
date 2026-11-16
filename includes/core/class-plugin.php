@@ -9,7 +9,9 @@ namespace UnstoppableSolutions\MigrationInspector\Core;
 
 use UnstoppableSolutions\MigrationInspector\Admin\Admin_Menu;
 use UnstoppableSolutions\MigrationInspector\Admin\Assets;
+use UnstoppableSolutions\MigrationInspector\Admin\Snapshot_Downloads;
 use UnstoppableSolutions\MigrationInspector\REST\REST_Controller;
+use UnstoppableSolutions\MigrationInspector\REST\Snapshots_Controller;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -65,6 +67,7 @@ final class Plugin {
 		Settings::register();
 
 		add_action( 'rest_api_init', array( new REST_Controller(), 'register_routes' ) );
+		add_action( 'rest_api_init', array( new Snapshots_Controller(), 'register_routes' ) );
 
 		// Multisite: create tables for sites added after network activation,
 		// and drop them when a site is deleted.
@@ -75,6 +78,7 @@ final class Plugin {
 			add_action( 'admin_init', array( Schema::class, 'maybe_upgrade' ) );
 			Admin_Menu::register();
 			Assets::register();
+			Snapshot_Downloads::register();
 		}
 	}
 }

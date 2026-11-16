@@ -231,3 +231,50 @@
 		width: 100%;
 	}
 }
+
+/* Snapshots */
+
+.umin-inline-form {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+}
+
+.umin-progress {
+	margin-top: 12px;
+}
+
+.umin-progress[hidden] {
+	display: none;
+}
+
+.umin-progress progress {
+	width: 100%;
+	max-width: 480px;
+	height: 16px;
+}
+
+.umin-progress__text {
+	margin: 6px 0;
+}
+
+.umin-table {
+	margin-top: 8px;
+}
+
+.umin-table .num {
+	text-align: right;
+	white-space: nowrap;
+}
+
+.umin-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.umin-row--missing th,
+.umin-row--missing td {
+	background: #fcf0f1;
+}

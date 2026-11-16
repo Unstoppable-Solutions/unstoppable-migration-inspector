@@ -17,6 +17,7 @@ defined( 'ABSPATH' ) || exit;
  * Sections are added as each one is built, so no placeholder screens ship.
  * Planned order: Dashboard, Migration Scanner, Snapshots, Repair Center
  * (which offers Search & Replace as a tool), Reports, Settings.
+ * Built so far: Dashboard, Snapshots, Settings.
  */
 final class Admin_Menu {
 
@@ -29,6 +30,11 @@ final class Admin_Menu {
 	 * Settings screen slug.
 	 */
 	const SETTINGS_SLUG = 'umin-settings';
+
+	/**
+	 * Snapshots screen slug.
+	 */
+	const SNAPSHOTS_SLUG = 'umin-snapshots';
 
 	/**
 	 * Register hooks.
@@ -62,6 +68,15 @@ final class Admin_Menu {
 			Capabilities::VIEW,
 			self::SLUG,
 			array( Dashboard_Page::class, 'render' )
+		);
+
+		add_submenu_page(
+			self::SLUG,
+			__( 'Migration Snapshots', 'unstoppable-migration-inspector' ),
+			__( 'Snapshots', 'unstoppable-migration-inspector' ),
+			Capabilities::VIEW,
+			self::SNAPSHOTS_SLUG,
+			array( Snapshots_Page::class, 'render' )
 		);
 
 		add_submenu_page(
@@ -114,13 +129,33 @@ final class Admin_Menu {
 	 * @return bool
 	 */
 	public static function is_plugin_screen( $hook_suffix ) {
-		return in_array(
-			$hook_suffix,
-			array(
-				'toplevel_page_' . self::SLUG,
-				'migration-inspector_page_' . self::SETTINGS_SLUG,
-			),
-			true
-		) || false !== strpos( (string) $hook_suffix, '_page_' . self::SETTINGS_SLUG );
+		$hook_suffix = (string) $hook_suffix;
+
+		if ( 'toplevel_page_' . self::SLUG === $hook_suffix ) {
+			return true;
+		}
+
+		// Submenu hook suffixes start with the translated menu title, so
+		// match on the page slug at the end instead.
+		foreach ( array( self::SETTINGS_SLUG, self::SNAPSHOTS_SLUG ) as $slug ) {
+			$suffix = '_page_' . $slug;
+			if ( substr( $hook_suffix, -strlen( $suffix ) ) === $suffix ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Whether the current admin screen is the Snapshots screen.
+	 *
+	 * @param string $hook_suffix Hook suffix.
+	 * @return bool
+	 */
+	public static function is_snapshots_screen( $hook_suffix ) {
+		$suffix = '_page_' . self::SNAPSHOTS_SLUG;
+
+		return substr( (string) $hook_suffix, -strlen( $suffix ) ) === $suffix;
 	}
 }

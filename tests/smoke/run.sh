@@ -32,6 +32,7 @@ WP_DIR="${WP_DIR:-/tmp/umin-smoke-wp}"
 BUILD_DIR="${BUILD_DIR:-/tmp/umin-smoke-build}"
 PORT="${PORT:-8089}"
 SLUG="unstoppable-migration-inspector"
+UMIN_TABLES="umin_snapshots umin_snapshot_chunks umin_comparisons umin_comparison_items umin_jobs umin_scans umin_findings"
 SITE="http://127.0.0.1:${PORT}"
 JAR_ADMIN="${BUILD_DIR}/admin.cookies"
 JAR_SUB="${BUILD_DIR}/subscriber.cookies"
@@ -150,10 +151,10 @@ run_single_site_checks() {
 	contains "Plugin activates" "${out}" "activated."
 	check "No debug.log output after activation" "$(debug_log)" ""
 
-	for t in umin_snapshots umin_scans umin_findings; do
+	for t in ${UMIN_TABLES}; do
 		check "Table ${t} created" "$(table_exists "${t}")" "yes"
 	done
-	check "Schema version stored" "$(wp option get umin_db_version)" "1"
+	check "Schema version stored" "$(wp option get umin_db_version)" "2"
 	contains "Data is kept on uninstall by default" "$(setting)" '"delete_data_on_uninstall":false'
 
 	echo; echo "== ZIP contents =="
@@ -170,7 +171,7 @@ run_single_site_checks() {
 	start_server
 	login admin admin "${JAR_ADMIN}"
 	local page code
-	for path in "/wp-admin/admin.php?page=${SLUG}" "/wp-admin/admin.php?page=umin-settings" \
+	for path in "/wp-admin/admin.php?page=${SLUG}" "/wp-admin/admin.php?page=umin-snapshots" "/wp-admin/admin.php?page=umin-settings" \
 		"/wp-admin/admin.php?page=umin-settings&tab=performance" "/wp-admin/admin.php?page=umin-settings&tab=data" \
 		"/wp-admin/admin.php?page=umin-settings&tab=nonsense" "/wp-admin/plugins.php" "/wp-admin/index.php"; do
 		code="$(status_of "${JAR_ADMIN}" "${path}")"
@@ -187,6 +188,14 @@ run_single_site_checks() {
 	lacks "Plugin stylesheet not loaded on unrelated screens" "$(get "${JAR_ADMIN}" '/wp-admin/index.php')" "assets/css/admin.css"
 	lacks "No plugin assets on the front end" "$(curl -s "${SITE}/")" "unstoppable-migration-inspector"
 	contains "Dashboard link on Plugins screen" "$(get "${JAR_ADMIN}" '/wp-admin/plugins.php')" "page=${SLUG}"
+	page="$(get "${JAR_ADMIN}" "/wp-admin/admin.php?page=umin-snapshots")"
+	contains "Snapshots screen offers Take Snapshot" "${page}" "Take Snapshot"
+	contains "Snapshots screen offers import" "${page}" "Import Snapshot"
+	contains "Snapshots script enqueued on Snapshots screen" "${page}" "assets/js/snapshots.js"
+	lacks "Snapshots script not loaded on the dashboard" "$(get "${JAR_ADMIN}" "/wp-admin/admin.php?page=${SLUG}")" "assets/js/snapshots.js"
+	lacks "No inline script blocks from the plugin" "$(printf '%s' "${page}" | sed -n '/umin-wrap/,/<\/div><!-- wpbody-content/p')" "<script>"
+	code="$(status_of "${JAR_SUB}" "/wp-admin/admin.php?page=umin-snapshots")"
+	check "Subscriber cannot open Snapshots (before login: redirect)" "$( [ "${code}" = 302 ] || [ "${code}" = 403 ] && echo ok || echo "${code}" )" "ok"
 
 	echo; echo "== Settings: each tab saves independently =="
 	save_tab general --data-urlencode "umin_settings[_declared][]=previous_domains" \
@@ -274,7 +283,7 @@ run_single_site_checks() {
 	wp option add umin_unrelated_canary keep >/dev/null
 	wp plugin deactivate "${SLUG}" >/dev/null
 	wp plugin uninstall "${SLUG}" >/dev/null
-	for t in umin_snapshots umin_scans umin_findings; do
+	for t in ${UMIN_TABLES}; do
 		check "Table ${t} removed after opt-in uninstall" "$(table_exists "${t}")" "no"
 	done
 	check "Settings removed" "$(setting)" "none"

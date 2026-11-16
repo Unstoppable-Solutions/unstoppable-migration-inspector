@@ -17,11 +17,6 @@ defined( 'ABSPATH' ) || exit;
 final class Comparison_Repository {
 
 	/**
-	 * Rows per multi-row INSERT.
-	 */
-	const INSERT_BATCH = 200;
-
-	/**
 	 * Create a comparison.
 	 *
 	 * @param int $snapshot_id Snapshot ID.
@@ -160,7 +155,10 @@ final class Comparison_Repository {
 	}
 
 	/**
-	 * Store items in batches.
+	 * Store items.
+	 *
+	 * One INSERT per item keeps every query a fixed, fully prepared
+	 * statement. A step stores at most one chunk's worth of items.
 	 *
 	 * @param int                                                     $id    Comparison ID.
 	 * @param string                                                  $type  Type key.
@@ -170,19 +168,21 @@ final class Comparison_Repository {
 	public function insert_items( $id, $type, array $items ) {
 		global $wpdb;
 
-		foreach ( array_chunk( $items, self::INSERT_BATCH ) as $batch ) {
-			$placeholders = array();
-			$values       = array( Schema::table( 'umin_comparison_items' ) );
+		$table = Schema::table( 'umin_comparison_items' );
 
-			foreach ( $batch as $item ) {
-				$placeholders[] = '(%d, %s, %d, %s, %s)';
-				array_push( $values, $id, $type, (int) $item['id'], $item['kind'], (string) wp_json_encode( $item['detail'] ) );
-			}
-
-			$sql = 'INSERT INTO %i (comparison_id, record_type, record_id, kind, detail) VALUES ' . implode( ', ', $placeholders );
-
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared -- Placeholders are fixed strings built above; every value goes through prepare().
-			$wpdb->query( $wpdb->prepare( $sql, $values ) );
+		foreach ( $items as $item ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Plugin's own table.
+			$wpdb->insert(
+				$table,
+				array(
+					'comparison_id' => $id,
+					'record_type'   => $type,
+					'record_id'     => (int) $item['id'],
+					'kind'          => $item['kind'],
+					'detail'        => (string) wp_json_encode( $item['detail'] ),
+				),
+				array( '%d', '%s', '%d', '%s', '%s' )
+			);
 		}
 	}
 
