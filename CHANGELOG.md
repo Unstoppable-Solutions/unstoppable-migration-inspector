@@ -6,6 +6,16 @@ described at https://keepachangelog.com.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-18
+
+### Changed
+- When the site key matches, a low record-ID overlap now points to the Not
+  found list instead of suggesting a tool renumbered the content.
+- Tables whose rows belong to records that were not found (posts and their
+  fields, comments, term links, WooCommerce orders and lookups) are marked
+  "consistent with the records not found above" instead of "part of its
+  data may not have been imported".
+
 ## [0.2.0] - 2026-11-16
 
 Phase 2a: migration snapshots. Development build.

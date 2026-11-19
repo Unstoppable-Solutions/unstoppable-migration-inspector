@@ -412,7 +412,7 @@ final class Snapshots_Page {
 
 		<?php
 		self::render_config_diffs( isset( $summary['config'] ) ? (array) $summary['config'] : array() );
-		self::render_table_diffs( isset( $summary['tables'] ) ? (array) $summary['tables'] : array() );
+		self::render_table_diffs( isset( $summary['tables'] ) ? (array) $summary['tables'] : array(), (int) $totals[ Comparator::MISSING ] );
 	}
 
 	/**
@@ -600,10 +600,11 @@ final class Snapshots_Page {
 	/**
 	 * Tables that are missing or lost rows.
 	 *
-	 * @param array<string, array<string, mixed>> $tables Table results.
+	 * @param array<string, array<string, mixed>> $tables  Table results.
+	 * @param int                                 $missing Records not found in this comparison.
 	 * @return void
 	 */
-	private static function render_table_diffs( array $tables ) {
+	private static function render_table_diffs( array $tables, $missing = 0 ) {
 		$problems = array_filter(
 			$tables,
 			static function ( $table ) {
@@ -626,6 +627,11 @@ final class Snapshots_Page {
 			return;
 		endif;
 		?>
+		<?php if ( $missing > 0 ) : ?>
+			<p class="description">
+				<?php esc_html_e( 'Records listed as Not found above take their related rows with them (custom fields, category links, order items, lookup data). Tables marked "consistent with the records not found" most likely shrank for that reason, not because of a separate import problem. Check the Not found list first.', 'unstoppable-migration-inspector' ); ?>
+			</p>
+		<?php endif; ?>
 		<table class="widefat striped umin-table">
 			<thead>
 				<tr>
@@ -655,6 +661,8 @@ final class Snapshots_Page {
 							<?php
 							if ( Compare_Handler::is_tool_table( (string) $name ) ) {
 								esc_html_e( 'This table belongs to a backup, migration or staging tool, whose records normally differ between copies. Usually no action is needed.', 'unstoppable-migration-inspector' );
+							} elseif ( $missing > 0 && 'decreased' === $table['status'] && Compare_Handler::is_record_table( (string) $name ) ) {
+								esc_html_e( 'Fewer rows, consistent with the records not found above. If those records were deleted on purpose, no action is needed.', 'unstoppable-migration-inspector' );
 							} else {
 								echo 'missing' === $table['status']
 									? esc_html__( 'This table does not exist on this site. The plugin that uses it will have lost its data.', 'unstoppable-migration-inspector' )

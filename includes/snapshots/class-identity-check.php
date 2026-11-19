@@ -112,7 +112,13 @@ final class Identity_Check {
 			$reasons[] = __( 'The snapshot was taken on a site with a different Migration Inspector site key. This is expected if the database was rebuilt rather than copied, but also happens when the snapshot belongs to another site.', 'unstoppable-migration-inspector' );
 		}
 
-		if ( null !== $overlap && $overlap < 0.9 ) {
+		if ( null !== $overlap && $overlap < 0.9 && true === $signals['key_match'] ) {
+			$reasons[] = sprintf(
+				/* translators: %s: percentage. */
+				__( 'Only %s of a sample of record IDs from the snapshot exist on this site. The site key matches, so the missing IDs are most likely records that were deleted or did not arrive; they are listed under "Not found" below.', 'unstoppable-migration-inspector' ),
+				number_format_i18n( $overlap * 100, 0 ) . '%'
+			);
+		} elseif ( null !== $overlap && $overlap < 0.9 ) {
 			$reasons[] = sprintf(
 				/* translators: %s: percentage. */
 				__( 'Only %s of a sample of record IDs from the snapshot exist on this site. If content was moved with a tool that renumbers posts (such as the WordPress export/import tool), an ID-based comparison cannot give meaningful results.', 'unstoppable-migration-inspector' ),
