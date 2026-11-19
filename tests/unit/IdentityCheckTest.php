@@ -129,4 +129,17 @@ final class IdentityCheckTest extends Test_Case {
 		$this->assertSame( Identity_Check::UNVERIFIED, $result['verdict'] );
 		$this->assertTrue( $result['needs_ack'] );
 	}
+
+	/**
+	 * With a matching key, low overlap points to the Not found list, not to
+	 * renumbering tools; without one, the renumbering explanation is kept.
+	 */
+	public function test_overlap_wording_depends_on_key_match() {
+		$matched   = implode( ' ', Identity_Check::decide( $this->signals( array( 'key_match' => true, 'id_overlap' => 0.66 ) ) )['reasons'] );
+		$unmatched = implode( ' ', Identity_Check::decide( $this->signals( array( 'key_match' => false, 'id_overlap' => 0.66, 'prefix_match' => true ) ) )['reasons'] );
+
+		$this->assertStringContainsString( 'Not found', $matched );
+		$this->assertStringNotContainsString( 'renumbers', $matched );
+		$this->assertStringContainsString( 'renumbers', $unmatched );
+	}
 }

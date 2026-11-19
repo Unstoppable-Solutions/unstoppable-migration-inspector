@@ -324,6 +324,18 @@ final class Compare_Handler extends Job_Handler {
 	}
 
 	/**
+	 * Whether a table holds rows that belong to tracked records (posts and
+	 * their fields, comments, terms links, users, WooCommerce orders and
+	 * lookups), so it shrinks when those records are deleted or missing.
+	 *
+	 * @param string $table Table name.
+	 * @return bool
+	 */
+	public static function is_record_table( $table ) {
+		return (bool) preg_match( '/(^|_)(posts|postmeta|comments|commentmeta|term_relationships|termmeta|users|usermeta|wc_orders|wc_orders_meta|wc_order_[a-z_]+|woocommerce_order_items|woocommerce_order_itemmeta|wc_product_meta_lookup|wc_customer_lookup|wc_product_attributes_lookup|wc_reserved_stock)$/', (string) $table );
+	}
+
+	/**
 	 * Whether a table (name without prefix) belongs to a backup, migration
 	 * or staging tool, whose contents normally differ between copies.
 	 *

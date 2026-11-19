@@ -344,4 +344,13 @@ final class ComparatorTest extends Test_Case {
 			$this->assertFalse( \UnstoppableSolutions\MigrationInspector\Snapshots\Compare_Handler::is_tool_table( $table ), $table );
 		}
 	}
+
+	public function test_record_tables_are_recognised() {
+		foreach ( array( 'wp_posts', 'stg_postmeta', 'wp_term_relationships', 'wp_wc_orders', 'wp_wc_orders_meta', 'wp_wc_order_addresses', 'wp_woocommerce_order_itemmeta', 'wp_wc_product_meta_lookup', 'wp_wc_customer_lookup', 'wp_comments' ) as $table ) {
+			$this->assertTrue( \UnstoppableSolutions\MigrationInspector\Snapshots\Compare_Handler::is_record_table( $table ), $table );
+		}
+		foreach ( array( 'wp_options', 'wp_wpvivid_options', 'wp_actionscheduler_actions', 'wp_mypostsplugin_log' ) as $table ) {
+			$this->assertFalse( \UnstoppableSolutions\MigrationInspector\Snapshots\Compare_Handler::is_record_table( $table ), $table );
+		}
+	}
 }

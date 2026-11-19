@@ -3,7 +3,7 @@ Contributors: paramedic192
 Tags: migration, site health, mixed content, broken images, search replace
 Requires at least: 6.5
 Tested up to: 7.1
-Stable tag: 0.3.0
+Stable tag: 0.3.1
 Requires PHP: 7.4
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -14,7 +14,7 @@ Checks a WordPress site after it has been moved and explains what did not transf
 
 You moved your WordPress site to a new host, server or domain. Did everything arrive? Unstoppable Migration Inspector answers that question.
 
-**This is a development build (0.3.0).** It contains the dashboard, the read-only scanner, migration snapshots and settings. Repair tools and reports are being built in stages and are not included yet. Nothing below the "Planned" heading works in this build.
+**This is a development build (0.3.1).** It contains the dashboard, the read-only scanner, migration snapshots and settings. Repair tools and reports are being built in stages and are not included yet. Nothing below the "Planned" heading works in this build.
 
 = Included in this build =
 
@@ -105,6 +105,9 @@ The plugin stores its settings in one WordPress option (`umin_settings`) and cre
 
 == Changelog ==
 
+= 0.3.1 =
+* Clearer comparison wording when records were deleted: the identity note points to the Not found list, and tables that shrank with those records are marked as consistent with them.
+
 = 0.3.0 =
 * Development build (Phase 2b).
 * Read-only scanner: Scan Website on the dashboard, a Scan Results screen with severity, explanation, next step and affected items for each finding, and resumable scanning for large sites.
@@ -120,5 +123,5 @@ The plugin stores its settings in one WordPress option (`umin_settings`) and cre
 
 == Upgrade Notice ==
 
-= 0.3.0 =
+= 0.3.1 =
 Development build. Not for production use.

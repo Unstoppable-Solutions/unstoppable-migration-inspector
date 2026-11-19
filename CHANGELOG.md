@@ -6,6 +6,14 @@ described at https://keepachangelog.com.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-18
+
+### Changed
+- Includes 0.2.1: when the site key matches, a low record-ID overlap points
+  to the Not found list instead of suggesting a tool renumbered content;
+  tables that shrank with records that were not found are marked as
+  consistent with them instead of "may not have been imported".
+
 ## [0.3.0] - 2026-11-16
 
 Phase 2b: read-only migration scanner. Development build.
